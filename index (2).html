@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prueba de conexión · Ensayos</title>
+<style>
+  :root{--ink:#14312A;--papel:#F4F6F2;--linea:#D3DBD3;--tenue:#6C7B72;
+        --acento:#8A5A12;--ok:#1F6B45;--error:#9B2C1F}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 20px;background:var(--papel);color:var(--ink);
+       font:15px/1.55 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  main{max-width:520px;margin:0 auto}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--tenue);font-size:13px;margin:0 0 20px}
+  .tarjeta{background:#fff;border:1px solid var(--linea);border-radius:6px;padding:18px;margin-bottom:14px}
+  .tarjeta h2{font-size:13px;color:var(--tenue);font-weight:normal;margin:0 0 10px}
+  .marca{display:flex;align-items:center;gap:10px;font-size:15px}
+  .marca i{width:22px;height:22px;border-radius:11px;display:grid;place-items:center;
+           color:#fff;font-style:normal;font-size:14px;flex:0 0 auto}
+  .si{background:var(--ok)} .no{background:var(--error)} .espera{background:var(--tenue)}
+  label{display:block;font-size:12px;color:var(--tenue);margin:0 0 4px}
+  input{width:100%;padding:10px;border:1px solid var(--linea);border-radius:3px;
+        font:14px ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+  button{width:100%;background:var(--ink);color:#fff;border:0;border-radius:3px;
+         padding:13px;font:inherit;font-weight:600;cursor:pointer;margin-top:12px}
+  button[disabled]{opacity:.45;cursor:default}
+  .msg{margin-top:12px;padding:11px 13px;border-radius:3px;font-size:14px;display:none}
+  .msg.ok{background:#E7F1EA;color:var(--ok);display:block}
+  .msg.err{background:#F7E7E4;color:var(--error);display:block}
+  .msg.info{background:#FFF6E3;color:var(--acento);display:block}
+  .msg b{display:block;margin-bottom:4px}
+  .pista{font-size:13px;color:var(--tenue);margin-top:14px;line-height:1.5}
+  code{background:#EFF2EE;padding:1px 5px;border-radius:2px;font-size:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Prueba de conexión</h1>
+  <p class="sub">Verifica que GitHub Pages funciona y que puede hablar con su hoja.</p>
+
+  <div class="tarjeta">
+    <h2>1. La página se publicó</h2>
+    <div class="marca"><i class="si">✓</i>
+      <span>Si está leyendo esto, GitHub Pages ya está sirviendo su sitio.</span></div>
+  </div>
+
+  <div class="tarjeta">
+    <h2>2. Conexión con el libro</h2>
+    <label for="url">Dirección de la aplicación web (termina en /exec)</label>
+    <input id="url" placeholder="https://script.google.com/macros/s/…/exec"
+           autocapitalize="none" spellcheck="false">
+    <button id="probar">Probar conexión</button>
+    <div id="msg" class="msg"></div>
+    <p class="pista">La dirección sale en Apps Script, en
+      <b>Implementar ▸ Gestionar implementaciones</b>. Se guarda en este dispositivo
+      para la próxima vez.</p>
+  </div>
+</main>
+
+<script>
+(function(){
+  var campo = document.getElementById('url');
+  var boton = document.getElementById('probar');
+  var caja  = document.getElementById('msg');
+
+  try { campo.value = localStorage.getItem('ens_api') || ''; } catch(e){}
+
+  function aviso(titulo, detalle, clase){
+    caja.className = 'msg ' + clase;
+    caja.innerHTML = '<b>' + titulo + '</b>' + (detalle || '');
+  }
+
+  boton.onclick = function(){
+    var url = campo.value.trim();
+    if (!url) return aviso('Falta la dirección', 'Pegue el enlace que termina en /exec.', 'err');
+    if (url.indexOf('/exec') < 0) {
+      return aviso('Esa dirección no sirve',
+        'Debe terminar en <code>/exec</code>. Si la suya termina en <code>/dev</code>, ' +
+        'esa es la de pruebas y solo funciona para usted.', 'err');
+    }
+
+    boton.disabled = true;
+    aviso('Probando…', '', 'info');
+
+    // Se pide la sesión con un token vacío: la respuesta esperada es
+    // "no hay sesión", que ya demuestra que la conexión funciona.
+    fetch(url, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ metodo: 'contextoSesion', args: [''] })
+    })
+    .then(function(r){ return r.text(); })
+    .then(function(texto){
+      boton.disabled = false;
+      var r;
+      try { r = JSON.parse(texto); }
+      catch(e){
+        return aviso('Respondió, pero con una página en vez de datos',
+          'Casi siempre es que la implementación pide iniciar sesión. En Apps Script, ' +
+          'en <b>Implementar ▸ Gestionar implementaciones</b>, ponga ' +
+          '<b>Quién tiene acceso: Cualquier usuario</b> y guarde una versión nueva.', 'err');
+      }
+      if (r._ok !== undefined) {
+        try { localStorage.setItem('ens_api', url); } catch(e){}
+        return aviso('Conexión correcta',
+          'Su hoja respondió bien y la dirección quedó guardada. ' +
+          'La app ya puede trabajar desde aquí.', 'ok');
+      }
+      aviso('Respondió algo inesperado',
+        'Revise que el <code>Code.gs</code> esté actualizado y que haya publicado ' +
+        'una versión nueva. Respuesta: <code>' + texto.substring(0,120) + '</code>', 'err');
+    })
+    .catch(function(){
+      boton.disabled = false;
+      aviso('No se pudo conectar',
+        'Dos causas posibles: la implementación no está en ' +
+        '<b>Cualquier usuario</b>, o la dirección está mal copiada.', 'err');
+    });
+  };
+})();
+</script>
+</body>
+</html>
