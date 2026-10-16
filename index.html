@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --ink:#14312A; --papel:#F4F6F2; --linea:#D3DBD3; --tenue:#6C7B72;
+    --acento:#8A5A12; --ok:#1F6B45; --error:#9B2C1F;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--papel);color:var(--ink);
+       font:14px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  body[data-vista]{padding:18px 20px}
+  body[data-vista="campo"]{padding:0 0 96px;font-size:16px}
+  body[data-vista="croquis"]{padding:0;display:flex;flex-direction:column;overflow:hidden}
+  body[data-vista="panel"]{padding:16px}
+
+  h1{font-size:17px;margin:0 0 2px}
+  p.guia{margin:0 0 16px;color:var(--tenue);font-size:13px;max-width:58ch}
+  label{display:block;font-size:12px;color:var(--tenue);margin:12px 0 4px}
+  select,input,textarea{width:100%;padding:8px 9px;border:1px solid var(--linea);border-radius:3px;
+    background:#fff;font:inherit;color:var(--ink)}
+  textarea{resize:vertical;min-height:52px}
+  .fila{display:flex;gap:12px}.fila>div{flex:1}
+  fieldset{border:1px solid var(--linea);border-radius:4px;padding:2px 14px 14px;margin:0 0 14px;background:#fff}
+  legend{font-size:12px;color:var(--tenue);padding:0 6px}
+  code{font:12px ui-monospace,Menlo,Consolas,monospace;background:#EFF2EE;padding:1px 4px;border-radius:2px}
+
+  button{background:var(--ink);color:#fff;border:0;border-radius:3px;padding:10px 18px;font:inherit;cursor:pointer}
+  button.sec{background:#fff;color:var(--ink);border:1px solid var(--ink)}
+  button.chico{padding:6px 12px;font-size:13px}
+  button[disabled]{opacity:.45;cursor:default}
+  .acciones{margin-top:20px;display:flex;gap:10px;align-items:center}
+
+  .msg{margin-top:14px;padding:10px 12px;border-radius:3px;font-size:13px;display:none}
+  .msg.ok{background:#E7F1EA;color:var(--ok);display:block}
+  .msg.err{background:#F7E7E4;color:var(--error);display:block}
+  .msg.info{background:#FFF6E3;color:var(--acento);display:block}
+
+  table.rejilla{width:100%;border-collapse:collapse;margin-top:8px}
+  table.rejilla th{font-size:11px;color:var(--tenue);text-align:left;font-weight:normal;padding:0 4px 4px}
+  table.rejilla td{padding:0 4px 4px}
+  table.rejilla td input{padding:6px 7px}
+  .quitar{background:none;border:0;color:var(--error);cursor:pointer;font-size:16px;line-height:1;padding:0 4px}
+
+  /* panel */
+  .cifras{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+  .c{background:#fff;border:1px solid var(--linea);border-radius:4px;padding:10px}
+  .c b{display:block;font:600 22px/1.1 ui-monospace,Menlo,Consolas,monospace}
+  .c span{font-size:11px;color:var(--tenue)}
+  .c.alerta b{color:var(--error)} .c.aviso b{color:var(--acento)}
+  ul.lista{list-style:none;padding:0;margin:0 0 16px;font-size:13px}
+  ul.lista li{padding:6px 0;border-bottom:1px solid var(--linea)}
+  ul.lista li span{color:var(--tenue);font-size:12px;display:block}
+  .panel button{width:100%;text-align:left;margin-bottom:6px}
+
+  /* casillas de índices */
+  #variables{background:#fff;border:1px solid var(--linea);border-radius:3px;padding:10px;
+             max-height:150px;overflow:auto;display:none}
+  #variables label{display:flex;align-items:center;gap:8px;margin:0 0 6px;color:var(--ink);font-size:13px}
+  #variables input{width:auto}
+
+  /* croquis */
+  header.barra{padding:12px 18px;border-bottom:1px solid var(--linea);background:#fff;
+               display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  header.barra h1{font-size:15px}
+  header.barra .sub{color:var(--tenue);font-size:12px}
+  header.barra nav{margin-left:auto;display:flex;gap:6px}
+  header.barra nav button{background:#fff;border:1px solid var(--linea);color:var(--ink);
+                          padding:5px 12px;font-size:13px}
+  header.barra nav button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  main{flex:1;position:relative;overflow:auto}
+  #mapa{position:absolute;inset:0}
+  #rejillaCroquis{padding:18px;display:none}
+  .bloque{margin-bottom:14px}
+  .bloque h2{font-size:12px;color:var(--tenue);font-weight:normal;margin:0 0 6px}
+  .parcelas{display:flex;gap:8px;flex-wrap:wrap}
+  .parcela{width:96px;height:70px;border-radius:3px;padding:8px;color:#fff;
+           display:flex;flex-direction:column;justify-content:space-between}
+  .parcela b{font:600 15px/1 ui-monospace,Menlo,Consolas,monospace}
+  .parcela span{font-size:12px;opacity:.92}
+  .leyenda{display:flex;gap:14px;flex-wrap:wrap;padding:10px 18px;border-top:1px solid var(--linea);
+           background:#fff;font-size:12px}
+  .leyenda i{width:11px;height:11px;border-radius:2px;display:inline-block;margin-right:5px}
+  .vacio{padding:40px 18px;color:var(--tenue)}
+  .etq{background:transparent;border:0;box-shadow:none;color:#fff;
+       font:600 12px ui-monospace,Menlo,monospace;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+
+  /* campo */
+  header.movil{background:var(--ink);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}
+  header.movil h1{font-size:16px;margin:0}
+  header.movil p{margin:2px 0 0;font-size:13px;opacity:.75}
+  .campo section{padding:14px 16px}
+  .campo .msg{margin:12px 16px}
+  .campo select,.campo input,.campo textarea{padding:11px}
+  .tarea{background:#fff;border:1px solid var(--linea);border-left:3px solid var(--acento);
+         border-radius:4px;padding:10px 12px;margin-bottom:8px}
+  .tarea b{display:block;font-size:14px}
+  .tarea span{font-size:12px;color:var(--tenue)}
+  .tarea.hoy{border-left-color:var(--ok)}
+  .tarea.tarde{border-left-color:var(--error)}
+  table.captura{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--linea);border-radius:4px}
+  table.captura th{font-size:11px;color:var(--tenue);font-weight:normal;text-align:left;
+                   padding:8px;border-bottom:1px solid var(--linea)}
+  table.captura td{padding:6px 8px;border-bottom:1px solid #EDF0EC}
+  table.captura td.n{font:600 15px ui-monospace,Menlo,Consolas,monospace;white-space:nowrap}
+  table.captura td.t{font-size:12px;color:var(--tenue)}
+  table.captura td input{padding:9px;text-align:right}
+  .barraFija{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--linea);
+             padding:12px 16px;display:flex;gap:10px}
+  .barraFija button{flex:1;padding:14px;font-weight:600}
+  .barraFija button.sec{flex:0 0 auto;font-weight:400;padding:14px 16px}
+
+  /* acceso */
+  body[data-vista="app"] #app.acceso{display:flex;align-items:center;justify-content:center;padding:20px}
+  .caja{background:#fff;border:1px solid var(--linea);border-radius:8px;padding:26px 24px;
+    width:100%;max-width:340px}
+  .caja .marca{font-size:11px;color:var(--tenue);letter-spacing:.3px;margin-bottom:4px}
+  .caja h1{font-size:22px;margin:0 0 16px}
+  .caja input{padding:13px;font-size:17px}
+  .caja button{width:100%;padding:14px;font-size:16px;font-weight:600;margin-top:18px}
+  .caja .msg{position:static;box-shadow:none;margin-top:12px}
+
+  /* departamentos */
+  header.movil .quien{flex:1}
+  header.movil .quien b{display:block;font-size:15px}
+  header.movil .quien span{font-size:12px;opacity:.75}
+  header.movil{display:flex;align-items:center;gap:10px}
+  .salir{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:4px;
+    padding:6px 12px;font-size:13px}
+  .deptos{padding:14px;display:flex;flex-direction:column;gap:10px}
+  .depto{background:#fff;border:1px solid var(--linea);border-radius:6px;padding:18px 16px;
+    text-align:left;color:var(--ink)}
+  .depto b{display:block;font-size:16px;margin-bottom:2px}
+  .depto span{font-size:12px;color:var(--tenue)}
+
+
+  /* ---------------- app de campo (móvil) ---------------- */
+  body[data-vista="app"]{padding:0;font-size:16px;overflow:hidden;
+    -webkit-user-select:none;user-select:none;overscroll-behavior:none}
+  body[data-vista="app"] #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header.movil.con-volver{display:flex;align-items:center;gap:10px}
+  header.movil .atras{background:none;border:0;color:#fff;font-size:30px;line-height:1;
+    padding:0 6px;cursor:pointer}
+  .cargando,.vacio{padding:40px 20px;color:var(--tenue);text-align:center}
+
+  .filtros{display:flex;gap:6px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--linea);
+    overflow-x:auto}
+  .filtros .f{background:#fff;border:1px solid var(--linea);color:var(--tenue);border-radius:16px;
+    padding:6px 14px;font-size:13px;white-space:nowrap}
+  .filtros .f.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .lista-ensayos{flex:1;overflow:auto;padding:12px}
+  .ens{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--linea);
+    border-radius:6px;padding:14px;margin-bottom:8px;color:var(--ink)}
+  .ens b{display:block;font-size:15px;margin-bottom:3px}
+  .ens span{display:block;font-size:13px;color:var(--tenue)}
+  .ens em{display:inline-block;margin-top:6px;font-style:normal;font-size:11px;
+    background:#EFF2EE;color:var(--tenue);padding:2px 8px;border-radius:10px}
+
+  .selector{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;
+    border-bottom:1px solid var(--linea)}
+  .selector select{flex:1;padding:10px;font-size:14px}
+  .avance{font-size:12px;color:var(--tenue);min-width:74px;text-align:right}
+  .avance b{font:600 17px ui-monospace,Menlo,monospace;color:var(--ink)}
+  .avance .barra{height:4px;background:#E4E9E5;border-radius:2px;margin-top:4px;overflow:hidden}
+  .avance .barra i{display:block;height:100%;background:var(--ok)}
+
+  .pestanas{display:flex;background:#fff;border-bottom:1px solid var(--linea)}
+  .pestanas .p{flex:1;background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--tenue);padding:11px;font-size:14px}
+  .pestanas .p.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+
+  .panel{flex:1;position:relative;overflow:auto}
+  .panel.oculto{display:none}
+  body[data-vista="app"] #mapa{position:absolute;inset:0}
+  .gps{position:absolute;right:14px;bottom:18px;z-index:500;width:48px;height:48px;border-radius:24px;
+    background:#fff;color:var(--ink);border:1px solid var(--linea);font-size:22px;
+    box-shadow:0 2px 8px rgba(0,0,0,.25)}
+
+  .filas{padding:8px}
+  .fila{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid var(--linea);
+    border-radius:5px;padding:13px 12px;margin-bottom:6px;color:var(--ink);text-align:left}
+  .fila.ok{background:#EDF6F0;border-color:#BBD9C6}
+  .fila i{width:10px;height:26px;border-radius:2px;flex:0 0 auto}
+  .fila b{font:600 17px ui-monospace,Menlo,monospace;min-width:44px}
+  .fila span{flex:1;font-size:13px;color:var(--tenue)}
+  .fila em{font-style:normal;color:var(--ok);font-size:18px}
+
+  .hoja{position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:14px 14px 0 0;
+    box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:0 16px 20px;z-index:900;
+    transform:translateY(102%);transition:transform .22s ease;max-height:82vh;overflow:auto}
+  .hoja.abierta{transform:translateY(0)}
+  .hoja .agarre{width:40px;height:4px;background:#D3DBD3;border-radius:2px;margin:10px auto 6px}
+  .hoja .cab{position:relative;padding:4px 36px 12px 0;border-bottom:1px solid var(--linea);margin-bottom:6px}
+  .hoja .cab b{font-size:19px} .hoja .cab span{display:block;font-size:13px;color:var(--tenue)}
+  .hoja .cerrar{position:absolute;right:-6px;top:-2px;background:none;border:0;font-size:26px;
+    color:var(--tenue);padding:0 8px}
+  .hoja input{padding:14px;font-size:18px}
+  .hoja .yacap{background:#FFF6E3;color:var(--acento);font-size:13px;padding:8px 10px;
+    border-radius:4px;margin:8px 0}
+  .hoja .botones{display:flex;gap:10px;margin-top:16px}
+  .hoja .botones button{flex:1;padding:15px;font-size:16px;font-weight:600}
+  body[data-vista="app"] .msg{position:fixed;left:12px;right:12px;bottom:12px;z-index:950;
+    box-shadow:0 2px 10px rgba(0,0,0,.18);margin:0}
+
+
+  /* menú principal */
+  .lineas{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tarjeta{background:#fff;border:1px solid var(--linea);border-radius:5px;padding:16px;
+           text-align:left;color:var(--ink);cursor:pointer;display:block;width:100%}
+  .tarjeta:hover{border-color:var(--ink)}
+  .tarjeta b{font-size:15px;display:block;margin-bottom:10px}
+  .tarjeta .numeros{display:flex;gap:18px}
+  .tarjeta .numeros span{font-size:11px;color:var(--tenue);display:flex;flex-direction:column}
+  .tarjeta .numeros i{font:600 20px/1.2 ui-monospace,Menlo,Consolas,monospace;font-style:normal;color:var(--ink)}
+  .tarjeta .pendientes{margin-top:10px;font-size:12px;display:flex;gap:12px}
+  .tarjeta .pendientes em{font-style:normal;color:var(--tenue)}
+  .tarjeta .pendientes .rojo{color:var(--error)} .tarjeta .pendientes .ambar{color:var(--acento)}
+  .fichas{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+  .ficha{background:#fff;border:1px solid var(--linea);border-radius:4px;padding:12px;
+         text-align:left;color:var(--ink);cursor:pointer}
+  .ficha:hover{border-color:var(--ink)}
+  .ficha b{display:block;font-size:13px} .ficha span{font-size:11px;color:var(--tenue)}
+  .ficha.pendiente{border-left:3px solid var(--acento)}
+  .volver{margin-bottom:8px}
+
+  /* tabla de ensayos */
+  table.tabla{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--linea);
+              border-radius:4px;font-size:13px}
+  table.tabla th{font-size:11px;color:var(--tenue);font-weight:normal;text-align:left;
+                 padding:8px;border-bottom:1px solid var(--linea)}
+  table.tabla td{padding:7px 8px;border-bottom:1px solid #EDF0EC}
+  table.tabla td.mono{font:12px ui-monospace,Menlo,Consolas,monospace}
+  .chip{font-size:11px;padding:2px 7px;border-radius:10px;background:#EFF2EE;color:var(--tenue)}
+  .chip.establecido,.chip.en_seguimiento{background:#E7F1EA;color:var(--ok)}
+  .chip.cosechado,.chip.cerrado{background:#EAF0F5;color:#325C86}
+
+  /* catálogos */
+  .cats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .cat{background:#fff;border:1px solid var(--linea);border-radius:4px;padding:10px 12px}
+  .cat h2{font-size:12px;color:var(--tenue);font-weight:normal;margin:0 0 6px}
+  .cat ul{list-style:none;padding:0;margin:0 0 8px;font-size:13px}
+  .cat li{padding:3px 0;border-bottom:1px solid #EDF0EC}
+  .cat .agregar{display:flex;gap:6px}
+  .cat .agregar input{padding:6px 8px;font-size:13px}
+
+  /* repositorio de protocolos */
+  body[data-vista="protocolos"]{padding:0}
+  .repo{display:flex;height:100vh}
+  .repo aside{width:320px;border-right:1px solid var(--linea);padding:16px;overflow:auto;background:var(--papel)}
+  .repo section{flex:1;background:#fff;display:flex;flex-direction:column}
+  .repo iframe{flex:1;border:0;width:100%}
+  .repo .pie{padding:10px 16px;border-top:1px solid var(--linea);font-size:13px}
+  .subir{background:#fff;border:1px solid var(--linea);border-radius:4px;padding:10px;margin-bottom:14px}
+  .subir input,.subir select{margin-bottom:6px;font-size:13px;padding:7px 8px}
+  .subir button{width:100%;padding:9px}
+  #listaPdf li{position:relative;padding:8px 26px 8px 8px;border-bottom:1px solid var(--linea);
+               cursor:pointer;border-radius:3px}
+  #listaPdf li:hover{background:#fff}
+  #listaPdf li.sel{background:#fff;border-left:3px solid var(--ink)}
+  #listaPdf li span{display:block;font-size:11px;color:var(--tenue)}
+  #listaPdf .quitar{position:absolute;right:4px;top:8px}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="application/json" id="boot"><?!= datos ?></script>
+
+<script>
+/* ---------------------------------------------------------------
+ * Arranque. Dentro de Apps Script el bloque #boot trae datos reales;
+ * publicado en GitHub ese bloque no se puede leer y queda vacío, y la
+ * app pide lo que necesita por internet. El mismo archivo sirve en los
+ * dos lados.
+ * --------------------------------------------------------------- */
+var D = {};
+try { D = JSON.parse(document.getElementById('boot').textContent) || {}; } catch (e) { D = {}; }
+
+var EN_APPS_SCRIPT = (D.entorno === 'APPS_SCRIPT');
+var VISTA = D.vista || 'app';
+var app = document.getElementById('app');
+document.body.setAttribute('data-vista', VISTA);
+
+/* Dirección del libro publicado. Déjela vacía y la app la pide la
+   primera vez; o péguela aquí para no configurar cada teléfono.     */
+var API_URL = 'https://script.google.com/macros/s/AKfycbz3JITkjJNk7md28vMREtCcraXEe426YyRTXq4FUJJ84hcZsb7j_i4mimbDdCrqnPMyjg/exec';
+
+function apiUrl(){
+  if (API_URL) return API_URL;
+  try { return localStorage.getItem('ens_api') || ''; } catch (e) { return ''; }
+}
+
+/**
+ * Único camino hacia el servidor. Dentro de Apps Script usa el puente
+ * interno; fuera, una petición HTTPS. Las pantallas no saben cuál es.
+ */
+function llamar(metodo, args, ok, err){
+  ok = ok || function(){};
+  err = err || errorServidor;
+
+  if (EN_APPS_SCRIPT && typeof google !== 'undefined' && google.script && google.script.run) {
+    var puente = google.script.run.withSuccessHandler(ok).withFailureHandler(err);
+    return puente[metodo].apply(puente, args || []);
+  }
+
+  var url = apiUrl();
+  if (!url) return err(new Error('Falta configurar la dirección del libro.'));
+
+  fetch(url, { method: 'POST', redirect: 'follow',
+               headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+               body: JSON.stringify({ metodo: metodo, args: args || [] }) })
+    .then(function(r){ return r.json(); })
+    .then(function(r){
+      if (r && r._ok) ok(r._datos);
+      else err(new Error((r && r._error) || 'Respuesta no reconocida del servidor.'));
+    })
+    .catch(function(){ err(new Error('Sin conexión con el servidor.')); });
+}
+
+/**
+ * Botones del menú. Dentro de la hoja el servidor abre el diálogo;
+ * publicada en internet no hay diálogos, así que se cambia de pantalla
+ * aquí mismo.
+ */
+var PANTALLA_DE = { abrirAsistenteEnsayo: 'ensayo', abrirImportador: 'geo',
+                    abrirImportadorIndices: 'indices', abrirCroquis: 'croquis',
+                    abrirProtocolos: 'protocolos', abrirCapaBase: 'base' };
+
+function accionMenu(fn){
+  if (EN_APPS_SCRIPT) { llamar(fn, []); return cerrarDialogo(); }
+  var vista = PANTALLA_DE[fn];
+  if (vista) return irA(vista);
+  llamar(fn, [], function(){ msg('Listo.', 'ok'); });
+}
+
+/** Cambia de pantalla pidiendo al servidor los datos que esa vista necesita. */
+function irA(vista){
+  var pide = { ensayo: null, geo: 'appInicio', indices: 'appInicio',
+               croquis: null, protocolos: 'datosInicio', base: null };
+  var metodo = pide[vista];
+  VISTA = vista;
+  document.body.setAttribute('data-vista', vista);
+  if (!metodo) return dibujar(vista);
+  llamar(metodo, [tokenGuardado()], function(d){ D = d; dibujar(vista); });
+}
+
+/** Cierra el diálogo cuando corre dentro de la hoja; fuera no aplica. */
+function cerrarDialogo(){
+  if (EN_APPS_SCRIPT && typeof google !== 'undefined' && google.script && google.script.host) {
+    google.script.host.close();
+  }
+}
+
+/* ------------------------- utilidades ------------------------- */
+function $(id){ return document.getElementById(id); }
+function val(id){ var e = $(id); return e ? String(e.value).trim() : ''; }
+function msg(texto, clase){
+  var d = $('msg');
+  if (!d) return;
+  d.className = 'msg ' + (clase || '');
+  d.innerHTML = texto || '';
+  if (!texto) d.style.display = 'none';
+}
+function opcionesEnsayo(vacio){
+  return (vacio ? '<option value="">— elegir —</option>' : '') +
+    (D.ensayos || []).map(function(e){
+      return '<option value="' + e.id + '">' + e.id + ' — ' + e.nombre + '</option>';
+    }).join('');
+}
+function llenarSelect(sel, campos, extra, vacio){
+  sel.innerHTML = '';
+  if (vacio) sel.appendChild(new Option('— sin usar —', ''));
+  if (extra) sel.appendChild(new Option(extra.texto, extra.valor));
+  campos.forEach(function(c){ sel.appendChild(new Option(c, c)); });
+}
+function autoseleccionar(sel, patron){
+  for (var i = 0; i < sel.options.length; i++){
+    if (patron.test(sel.options[i].value)) { sel.selectedIndex = i; return; }
+  }
+}
+function leerArchivo(input, alCargar){
+  var f = input.files[0];
+  if (!f) return msg('Elija un archivo primero.', 'err');
+  var lector = new FileReader();
+  lector.onload = function(){ alCargar({ nombre: f.name, base64: lector.result.split(',')[1] }); };
+  lector.readAsDataURL(f);
+}
+function cargarLeaflet(listo){
+  var css = document.createElement('link');
+  css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(css);
+  var js = document.createElement('script');
+  js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  js.onload = listo; js.onerror = listo;
+  document.head.appendChild(js);
+}
+
+/* ============================ PANEL ============================ */
+function vistaPanel(){
+  var r = D.resumen || {};
+  app.className = 'panel';
+  app.innerHTML =
+    '<h1>Estado general</h1>' +
+    '<div class="cifras">' +
+      '<div class="c"><b>' + (r.ensayos||0) + '</b><span>ensayos registrados</span></div>' +
+      '<div class="c"><b>' + (r.activos||0) + '</b><span>en campo</span></div>' +
+      '<div class="c aviso"><b>' + (r.proximas||0) + '</b><span>tareas en 7 días</span></div>' +
+      '<div class="c alerta"><b>' + (r.vencidas||0) + '</b><span>tareas vencidas</span></div>' +
+    '</div>' +
+    '<h1>Ensayos</h1>' +
+    '<ul class="lista">' + (D.ensayos||[]).map(function(e){
+      return '<li>' + e.nombre + '<span>' + e.id + ' · ' + (e.finca||'') + ' · ' + (e.estado||'') + '</span></li>';
+    }).join('') + '</ul>' +
+    [['abrirAsistenteEnsayo','Nuevo ensayo',true],
+     ['abrirImportador','Importar polígonos'],
+     ['abrirImportadorIndices','Importar índices del vuelo'],
+     ['abrirCroquis','Ver croquis'],
+     ['enviarAvisosPendientes','Enviar avisos pendientes'],
+     ['revisarCalidad','Revisar calidad de los datos'],
+     ['generarInforme','Generar informe']].map(function(b){
+      return '<button class="' + (b[2] ? '' : 'sec') + '" data-fn="' + b[0] + '">' + b[1] + '</button>';
+    }).join('');
+
+  [].forEach.call(app.querySelectorAll('button[data-fn]'), function(btn){
+    btn.onclick = function(){
+      accionMenu(btn.dataset.fn);
+    };
+  });
+}
+
+/* ======================== NUEVO ENSAYO ======================== */
+function vistaEnsayo(){
+  app.innerHTML =
+  '<h1>Nuevo ensayo</h1>' +
+  '<p class="guia">Al guardar se crean la ficha, los tratamientos, las parcelas ya aleatorizadas, ' +
+  'la carpeta en Drive y el cronograma de avisos.</p>' +
+
+  '<fieldset><legend>Identificación</legend>' +
+    '<div class="fila">' +
+      '<div><label>ID (opcional)</label><input id="id" placeholder="Se genera solo"></div>' +
+      '<div style="flex:2"><label>Nombre del ensayo</label><input id="nombre"></div></div>' +
+    '<div class="fila">' +
+      '<div><label>Cultivo</label><input id="cultivo"></div>' +
+      '<div><label>Finca</label><input id="finca"></div>' +
+      '<div><label>Lote</label><input id="lote"></div></div>' +
+    '<div class="fila">' +
+      '<div><label>Municipio</label><input id="municipio"></div>' +
+      '<div><label>Responsable</label><input id="responsable"></div>' +
+      '<div><label>Correo del responsable</label><input id="emailResponsable" type="email"></div></div>' +
+    '<label>Objetivo</label><textarea id="objetivo"></textarea>' +
+    '<label>Hipótesis</label><textarea id="hipotesis"></textarea>' +
+  '</fieldset>' +
+
+  '<fieldset><legend>Diseño</legend>' +
+    '<div class="fila">' +
+      '<div><label>Diseño experimental</label><select id="diseno">' +
+        ['DBCA','DCA','CUADRADO_LATINO','FACTORIAL_DBCA','PARCELA_DIVIDIDA','FRANJAS']
+          .map(function(d){ return '<option>' + d + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div><label>Repeticiones</label><input id="repeticiones" type="number" value="4" min="2"></div>' +
+      '<div><label>Área por parcela (m²)</label><input id="areaParcela" type="number" step="0.01"></div></div>' +
+    '<div class="fila">' +
+      '<div><label>Fecha de establecimiento</label><input id="fechaEstablecimiento" type="date"></div>' +
+      '<div><label>Cosecha estimada</label><input id="fechaCosecha" type="date"></div></div>' +
+    '<label style="margin-top:14px">Tratamientos</label>' +
+    '<table class="rejilla" id="tabTrat"><tr>' +
+      '<th style="width:70px">Código</th><th>Descripción</th><th style="width:120px">Producto</th>' +
+      '<th style="width:70px">Dosis</th><th style="width:70px">Unidad</th><th style="width:24px"></th></tr></table>' +
+    '<button class="sec chico" id="masTrat">Agregar tratamiento</button>' +
+  '</fieldset>' +
+
+  '<fieldset><legend>Muestreo</legend>' +
+    '<label>Método de muestreo</label>' +
+    '<textarea id="metodoMuestreo" placeholder="Ej.: cinco puntos por parcela en el área útil, descartando dos surcos de borde."></textarea>' +
+    '<table class="rejilla" id="tabVar"><tr>' +
+      '<th>Variable</th><th style="width:70px">Unidad</th><th style="width:80px">Inicio (DDE)</th>' +
+      '<th style="width:80px">Cada (días)</th><th style="width:70px">Eventos</th>' +
+      '<th style="width:90px">Submuestras</th><th style="width:24px"></th></tr></table>' +
+    '<button class="sec chico" id="masVar">Agregar variable</button>' +
+  '</fieldset>' +
+
+  '<fieldset><legend>Manejo y cosecha</legend>' +
+    '<label>Manejo agronómico</label><textarea id="manejo"></textarea>' +
+    '<label>Criterios de cosecha</label><textarea id="criteriosCosecha"></textarea>' +
+  '</fieldset>' +
+
+  '<div class="acciones"><button id="guardar">Crear ensayo</button></div>' +
+  '<div id="msg" class="msg"></div>';
+
+  function filaTrat(cod){
+    var tr = $('tabTrat').insertRow(-1);
+    tr.innerHTML = '<td><input class="c"></td><td><input class="d"></td><td><input class="p"></td>' +
+      '<td><input class="do"></td><td><input class="u"></td>' +
+      '<td><button class="quitar">×</button></td>';
+    tr.querySelector('.quitar').onclick = function(){ tr.remove(); };
+    if (cod) tr.querySelector('.c').value = cod;
+  }
+  function filaVar(){
+    var tr = $('tabVar').insertRow(-1);
+    tr.innerHTML = '<td><input class="n"></td><td><input class="u"></td>' +
+      '<td><input class="dde" type="number" value="30"></td>' +
+      '<td><input class="fr" type="number" value="30"></td>' +
+      '<td><input class="ev" type="number" value="3"></td>' +
+      '<td><input class="sub" type="number" value="5"></td>' +
+      '<td><button class="quitar">×</button></td>';
+    tr.querySelector('.quitar').onclick = function(){ tr.remove(); };
+  }
+  $('masTrat').onclick = function(){ filaTrat(); };
+  $('masVar').onclick = function(){ filaVar(); };
+  filaTrat('T1'); filaTrat('T2'); filaTrat('T3'); filaVar();
+
+  $('guardar').onclick = function(){
+    if (!val('nombre')) return msg('Escriba el nombre del ensayo.', 'err');
+    if (!val('fechaEstablecimiento')) return msg('La fecha de establecimiento define todo el cronograma.', 'err');
+
+    var trats = [].slice.call(document.querySelectorAll('#tabTrat tr')).slice(1).map(function(tr){
+      return { codigo: tr.querySelector('.c').value, descripcion: tr.querySelector('.d').value,
+               producto: tr.querySelector('.p').value, dosis: tr.querySelector('.do').value,
+               unidad: tr.querySelector('.u').value };
+    }).filter(function(t){ return t.codigo.trim(); });
+
+    var vars = [].slice.call(document.querySelectorAll('#tabVar tr')).slice(1).map(function(tr){
+      return { nombre: tr.querySelector('.n').value, unidad: tr.querySelector('.u').value,
+               dde: tr.querySelector('.dde').value, frecuencia: tr.querySelector('.fr').value,
+               eventos: tr.querySelector('.ev').value, submuestras: tr.querySelector('.sub').value };
+    }).filter(function(v){ return v.nombre.trim(); });
+
+    if (trats.length < 2) return msg('Registre al menos dos tratamientos.', 'err');
+
+    this.disabled = true;
+    msg('Creando ensayo, parcelas y cronograma…', 'info');
+    llamar('crearEnsayo', [{
+        id: val('id'), nombre: val('nombre'), cultivo: val('cultivo'), objetivo: val('objetivo'),
+        hipotesis: val('hipotesis'), diseno: val('diseno'), repeticiones: val('repeticiones'),
+        areaParcela: val('areaParcela'), finca: val('finca'), lote: val('lote'), municipio: val('municipio'),
+        responsable: val('responsable'), emailResponsable: val('emailResponsable'),
+        fechaEstablecimiento: val('fechaEstablecimiento'), fechaCosecha: val('fechaCosecha'),
+        metodoMuestreo: val('metodoMuestreo'), manejo: val('manejo'),
+        criteriosCosecha: val('criteriosCosecha'), tratamientos: trats, variables: vars
+      }], function(r){
+        msg('Ensayo <b>' + r.id + '</b> creado: ' + r.parcelas + ' parcelas aleatorizadas y ' +
+            r.tareas + ' tareas programadas.<br><a href="' + r.carpeta + '" target="_blank">Abrir carpeta en Drive</a>', 'ok');
+        $('guardar').disabled = false;
+      }, function(e){ msg(e.message, 'err'); $('guardar').disabled = false; });
+  };
+}
+
+/* ===================== IMPORTAR POLÍGONOS ===================== */
+function vistaGeo(){
+  app.innerHTML =
+  '<h1>Importar polígonos de parcelas</h1>' +
+  '<p class="guia">Acepta <code>.geojson</code>, <code>.kml</code>, <code>.kmz</code> o un ' +
+  '<code>.zip</code> con el shapefile completo (<code>.shp</code>, <code>.dbf</code>, <code>.prj</code>). ' +
+  'El área y el centroide se calculan solos.</p>' +
+
+  '<label for="ensayo">Ensayo</label><select id="ensayo">' + opcionesEnsayo() + '</select>' +
+  '<label for="archivo">Archivo</label>' +
+  '<input type="file" id="archivo" accept=".geojson,.json,.kml,.kmz,.zip">' +
+
+  '<div class="fila">' +
+    '<div><label for="crs">Sistema de coordenadas</label><select id="crs">' +
+      '<option value="AUTO">Detectar desde el archivo (.prj)</option>' +
+      '<option value="WGS84">Grados decimales WGS84</option>' +
+      '<option value="GTM">GTM — Guatemala Transverse Mercator</option>' +
+      '<option value="UTM15N">UTM zona 15N</option>' +
+      '<option value="UTM16N">UTM zona 16N</option></select></div>' +
+    '<div><label for="modo">Parcelas que no existen</label><select id="modo">' +
+      '<option value="CREAR">Crearlas en la hoja PARCELAS</option>' +
+      '<option value="OMITIR">Omitirlas</option></select></div></div>' +
+
+  '<fieldset id="mapeo" style="display:none"><legend>Cómo se enlaza cada polígono</legend>' +
+    '<div class="fila">' +
+      '<div><label for="campoParcela">Campo con el número de parcela</label><select id="campoParcela"></select></div>' +
+      '<div><label for="campoTrat">Campo con el tratamiento</label><select id="campoTrat"></select></div></div>' +
+    '<label for="campoBloque">Campo con el bloque o repetición</label><select id="campoBloque"></select>' +
+  '</fieldset>' +
+
+  '<div class="acciones">' +
+    '<button id="btnLeer" class="sec">Leer archivo</button>' +
+    '<button id="btnImportar" disabled>Importar polígonos</button></div>' +
+  '<div id="msg" class="msg"></div>';
+
+  var payload = null;
+
+  $('btnLeer').onclick = function(){
+    leerArchivo($('archivo'), function(p){
+      payload = p;
+      msg('Leyendo el archivo…', 'info');
+      llamar('inspeccionarArchivoGeo', [payload], function(info){
+          $('mapeo').style.display = 'block';
+          llenarSelect($('campoParcela'), info.campos, { texto: 'Usar el orden del archivo', valor: '__ORDEN__' }, false);
+          llenarSelect($('campoTrat'), info.campos, null, true);
+          llenarSelect($('campoBloque'), info.campos, null, true);
+          autoseleccionar($('campoParcela'), /parc|plot|num|id/i);
+          autoseleccionar($('campoTrat'), /trat|treat|tto|trt/i);
+          autoseleccionar($('campoBloque'), /bloq|block|rep/i);
+          $('btnImportar').disabled = false;
+          msg(info.n + ' polígonos encontrados' + (info.prj ? ' · proyección: ' + info.prj : '') + '.', 'ok');
+        }, function(e){ msg(e.message, 'err'); });
+    });
+  };
+
+  $('btnImportar').onclick = function(){
+    if (!payload) return;
+    this.disabled = true;
+    msg('Importando y calculando áreas…', 'info');
+    payload.idEnsayo = val('ensayo');
+    payload.crs = val('crs');
+    payload.modo = val('modo');
+    payload.campoParcela = val('campoParcela');
+    payload.campoTrat = val('campoTrat');
+    payload.campoBloque = val('campoBloque');
+    llamar('importarArchivoGeo', [payload], function(r){
+        msg('Listo: ' + r.actualizadas + ' parcelas actualizadas, ' + r.creadas + ' creadas, de ' +
+            r.total + ' polígonos.' +
+            (r.sinEnlace ? '<br>' + r.sinEnlace + ' polígonos traen un tratamiento que no está en la hoja TRATAMIENTOS.' : ''), 'ok');
+        $('btnImportar').disabled = false;
+      }, function(e){ msg(e.message, 'err'); $('btnImportar').disabled = false; });
+  };
+}
+
+/* ==================== ÍNDICES DEL VUELO ==================== */
+function vistaIndices(){
+  app.innerHTML =
+  '<h1>Índices del vuelo</h1>' +
+  '<p class="guia">Suba el CSV de estadísticas zonales: una fila por parcela y una columna por índice ' +
+  '(<code>NDVI_mean</code>, <code>NDRE_mean</code>, altura de dosel). Cada índice entra a ' +
+  '<code>DATOS_MUESTREO</code> como una variable más, así que se analiza igual que un dato de campo.</p>' +
+
+  '<div class="fila">' +
+    '<div><label for="ensayo">Ensayo</label><select id="ensayo">' + opcionesEnsayo() + '</select></div>' +
+    '<div><label for="fecha">Fecha del vuelo</label><input id="fecha" type="date"></div></div>' +
+
+  '<label for="archivo">Archivo CSV</label><input type="file" id="archivo" accept=".csv,.txt">' +
+  '<label for="campoParcela">Columna con el número de parcela</label><select id="campoParcela"></select>' +
+  '<label>Índices que se importan</label><div id="variables"></div>' +
+
+  '<div class="fila">' +
+    '<div><label for="piloto">Piloto</label><input id="piloto"></div>' +
+    '<div><label for="url">Enlace del ortomosaico</label><input id="url" placeholder="https://"></div></div>' +
+
+  '<div class="acciones">' +
+    '<button id="btnLeer" class="sec">Leer archivo</button>' +
+    '<button id="btnImportar" disabled>Importar</button></div>' +
+  '<div id="msg" class="msg"></div>';
+
+  $('fecha').valueAsDate = new Date();
+  var payload = null;
+
+  $('btnLeer').onclick = function(){
+    leerArchivo($('archivo'), function(p){
+      payload = p;
+      msg('Leyendo…', 'info');
+      llamar('inspeccionarCSV', [payload], function(info){
+          llenarSelect($('campoParcela'), info.campos, null, false);
+          autoseleccionar($('campoParcela'), /parc|plot|id|fid/i);
+          var cont = $('variables');
+          cont.style.display = 'block';
+          cont.innerHTML = info.numericas.map(function(c){
+            var marcado = /ndvi|ndre|gndvi|savi|altura|height|canopy|cobertura/i.test(c) ? 'checked' : '';
+            return '<label><input type="checkbox" value="' + c + '" ' + marcado + '>' + c + '</label>';
+          }).join('');
+          $('btnImportar').disabled = false;
+          msg(info.n + ' filas y ' + info.numericas.length + ' columnas numéricas encontradas.', 'ok');
+        }, function(e){ msg(e.message, 'err'); });
+    });
+  };
+
+  $('btnImportar').onclick = function(){
+    var vars = [].slice.call(document.querySelectorAll('#variables input:checked'))
+                 .map(function(i){ return i.value; });
+    if (!vars.length) return msg('Marque al menos un índice.', 'err');
+    this.disabled = true;
+    msg('Importando…', 'info');
+    payload.idEnsayo = val('ensayo');
+    payload.fecha = val('fecha');
+    payload.campoParcela = val('campoParcela');
+    payload.piloto = val('piloto');
+    payload.urlOrtomosaico = val('url');
+    payload.variables = vars;
+    llamar('importarIndices', [payload], function(r){
+        msg('Listo: ' + r.filas + ' registros de ' + r.variables + ' índices.' +
+            (r.vuelo ? '<br>Vuelo ' + r.vuelo + ' marcado como procesado.' : '') +
+            (r.sinEnlace ? '<br>' + r.sinEnlace + ' filas no coincidieron con ninguna parcela.' : ''), 'ok');
+        $('btnImportar').disabled = false;
+      }, function(e){ msg(e.message, 'err'); $('btnImportar').disabled = false; });
+  };
+}
+
+/* ========================== CROQUIS ========================== */
+var PALETA = ['#2E6E4E','#8A5A12','#325C86','#8C3A56','#5B6B2E','#7A4A8C','#B07C1F','#3E7F7B',
+              '#96442A','#4C5D9E','#6E7F1C','#8E3F7A'];
+
+function vistaCroquis(){
+  var trats = [];
+  (D.parcelas || []).forEach(function(p){ if (trats.indexOf(p.trat) < 0) trats.push(p.trat); });
+  trats.sort();
+  function color(t){ var i = trats.indexOf(t); return PALETA[i < 0 ? 0 : i % PALETA.length]; }
+
+  app.style.display = 'contents';
+  app.innerHTML =
+    '<header class="barra">' +
+      '<h1>' + (D.ensayo.nombre || D.ensayo.id) + '</h1>' +
+      '<span class="sub">' + [D.ensayo.finca, D.ensayo.lote, D.ensayo.diseno,
+          (D.parcelas || []).length + ' parcelas'].filter(Boolean).join('  ·  ') + '</span>' +
+      '<nav><button id="bMapa" class="on">Mapa</button>' +
+      '<button id="bRejilla">Croquis de bloques</button></nav>' +
+    '</header>' +
+    '<main><div id="mapa"></div><div id="rejillaCroquis"></div></main>' +
+    '<div class="leyenda">' + trats.map(function(t){
+      return '<span><i style="background:' + color(t) + '"></i>' + (t || 'sin tratamiento') + '</span>';
+    }).join('') + '</div>';
+
+  var bloques = {};
+  (D.parcelas || []).forEach(function(p){ (bloques[p.bloque] = bloques[p.bloque] || []).push(p); });
+  $('rejillaCroquis').innerHTML = Object.keys(bloques).sort().map(function(b){
+    var celdas = bloques[b].sort(function(x, y){ return x.col - y.col; }).map(function(p){
+      return '<div class="parcela" style="background:' + color(p.trat) + '">' +
+             '<b>' + p.num + '</b><span>' + p.trat + '</span></div>';
+    }).join('');
+    return '<div class="bloque"><h2>Bloque ' + b + '</h2><div class="parcelas">' + celdas + '</div></div>';
+  }).join('');
+
+  var mapa = null;
+  function ver(cual){
+    $('mapa').style.display = cual === 'mapa' ? 'block' : 'none';
+    $('rejillaCroquis').style.display = cual === 'rejilla' ? 'block' : 'none';
+    $('bMapa').className = cual === 'mapa' ? 'on' : '';
+    $('bRejilla').className = cual === 'rejilla' ? 'on' : '';
+    if (cual === 'mapa' && mapa) setTimeout(function(){ mapa.invalidateSize(); }, 60);
+  }
+  $('bMapa').onclick = function(){ ver('mapa'); };
+  $('bRejilla').onclick = function(){ ver('rejilla'); };
+
+  if (D.conGeometria && D.geojson && D.geojson.features.length) {
+    cargarLeaflet(function(){
+      if (typeof L === 'undefined') {
+        $('mapa').innerHTML = '<div class="vacio">No se pudo cargar el mapa. Revise la conexión; ' +
+          'el croquis de bloques funciona sin internet.</div>';
+        return;
+      }
+      mapa = L.map('mapa');
+      L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+        { maxZoom: 21, subdomains: ['mt0','mt1','mt2','mt3'], attribution: 'Google' }).addTo(mapa);
+      var capa = L.geoJSON(D.geojson, {
+        style: function(f){
+          return { color: '#ffffff', weight: 1.5,
+                   fillColor: color(String(f.properties.tratamiento)), fillOpacity: .62 };
+        },
+        onEachFeature: function(f, l){
+          var p = f.properties;
+          l.bindTooltip(String(p.parcela), { permanent: true, direction: 'center', className: 'etq' });
+          l.bindPopup('<b>Parcela ' + p.parcela + '</b><br>Tratamiento: ' + p.tratamiento +
+                      '<br>Bloque: ' + p.bloque + '<br>Área: ' + p.area_ha + ' ha');
+        }
+      }).addTo(mapa);
+      mapa.fitBounds(capa.getBounds(), { padding: [24, 24] });
+    });
+  } else {
+    $('mapa').innerHTML = '<div class="vacio">Este ensayo todavía no tiene polígonos. Use ' +
+      '<b>Ensayos ▸ Geometría ▸ Importar polígonos</b> para cargarlos, o revise el croquis de bloques.</div>';
+    ver('rejilla');
+  }
+}
+
+/* ========================= MENÚ PRINCIPAL ========================= */
+function vistaInicio(){
+  app.innerHTML =
+  '<h1>' + (D.libro || 'Módulo de ensayos') + '</h1>' +
+  '<p class="guia">Elija la línea de investigación. Cada una tiene sus propios tipos de ensayo, ' +
+  'equipos de aplicación y actividades de muestreo.</p>' +
+
+  '<div class="lineas">' + (D.lineas || []).map(function(l){
+    var r = l.resumen || {};
+    return '<button class="tarjeta" data-linea="' + l.id + '" style="border-top:4px solid ' + l.color + '">' +
+      '<b>' + l.nombre + '</b>' +
+      '<div class="numeros">' +
+        '<span><i>' + (r.ensayos||0) + '</i>ensayos</span>' +
+        '<span><i>' + (r.activos||0) + '</i>en campo</span>' +
+        '<span><i>' + (r.hectareas||0) + '</i>hectáreas</span>' +
+      '</div>' +
+      '<div class="pendientes">' +
+        (r.vencidas ? '<em class="rojo">' + r.vencidas + ' vencidas</em>' : '') +
+        (r.proximas ? '<em class="ambar">' + r.proximas + ' esta semana</em>' : '') +
+        (!r.vencidas && !r.proximas ? '<em>sin pendientes</em>' : '') +
+      '</div></button>';
+  }).join('') + '</div>' +
+
+  '<h1 style="margin-top:22px">Datos base</h1>' +
+  '<div class="fichas">' +
+    ficha('Capa de lotes', (D.base.lotes||0) + ' lotes · ' + (D.base.hectareas||0) + ' ha',
+          'abrirCapaBase', D.base.lotes ? '' : 'pendiente') +
+    ficha('Fincas', (D.base.fincas||0) + ' registradas' +
+          (D.base.sinNombre ? ' · ' + D.base.sinNombre + ' sin nombre' : ''),
+          'aplicarNombresDeFinca', D.base.sinNombre ? 'pendiente' : '') +
+    ficha('Protocolos', (D.base.protocolos||0) + ' documentos', 'abrirProtocolos', '') +
+    ficha('Contactos y avisos', 'quién recibe cada aviso', 'irAContactos', '') +
+  '</div>' +
+  '<div id="msg" class="msg"></div>';
+
+  function ficha(titulo, detalle, fn, estado){
+    return '<button class="ficha ' + estado + '" data-fn="' + fn + '">' +
+           '<b>' + titulo + '</b><span>' + detalle + '</span></button>';
+  }
+
+  [].forEach.call(app.querySelectorAll('.tarjeta'), function(b){
+    b.onclick = function(){
+      msg('Cargando ' + b.dataset.linea + '…', 'info');
+      llamar('contextoLinea', [b.dataset.linea], function(ctx){ D = ctx; vistaLinea(); }, function(e){ msg(e.message, 'err'); });
+    };
+  });
+  [].forEach.call(app.querySelectorAll('.ficha'), function(b){
+    b.onclick = function(){ accionMenu(b.dataset.fn); };
+  });
+}
+
+/* ===================== UNA LÍNEA EN CONCRETO ===================== */
+function vistaLinea(){
+  var l = D.linea, r = D.resumen || {};
+  app.innerHTML =
+  '<div class="volver"><button class="sec chico" id="volver">← Líneas</button></div>' +
+  '<h1 style="border-left:4px solid ' + l.color + ';padding-left:10px">' + l.nombre + '</h1>' +
+
+  '<div class="cifras">' +
+    '<div class="c"><b>' + (r.ensayos||0) + '</b><span>ensayos</span></div>' +
+    '<div class="c"><b>' + (r.activos||0) + '</b><span>en campo</span></div>' +
+    '<div class="c aviso"><b>' + (r.proximas||0) + '</b><span>tareas esta semana</span></div>' +
+    '<div class="c alerta"><b>' + (r.vencidas||0) + '</b><span>vencidas</span></div>' +
+  '</div>' +
+
+  '<div class="acciones" style="margin:0 0 16px">' +
+    '<button data-fn="abrirAsistenteEnsayo">Nuevo ensayo</button>' +
+    '<button class="sec" data-fn="abrirImportador">Croquis</button>' +
+    '<button class="sec" data-fn="abrirCroquis">Mapa</button>' +
+    '<button class="sec" data-fn="abrirProtocolos">Protocolos</button>' +
+  '</div>' +
+
+  '<h1>Ensayos</h1>' +
+  (D.ensayos.length
+    ? '<table class="tabla"><tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Finca / lote</th>' +
+      '<th>Establecido</th><th>Estado</th></tr>' +
+      D.ensayos.map(function(e){
+        return '<tr><td class="mono">' + e.id + '</td><td>' + e.nombre + '</td><td>' + (e.tipo||'') +
+               '</td><td>' + (e.finca||'') + ' / ' + (e.lote||'') + '</td><td>' + (e.fecha||'') +
+               '</td><td><span class="chip ' + (e.estado||'').toLowerCase() + '">' + (e.estado||'') +
+               '</span></td></tr>';
+      }).join('') + '</table>'
+    : '<p class="guia">Todavía no hay ensayos en esta línea.</p>') +
+
+  '<h1 style="margin-top:20px">Catálogos de la línea</h1>' +
+  '<div class="cats">' +
+    catBloque('TIPO_ENSAYO', 'Tipos de ensayo', D.tipos) +
+    catBloque('EQUIPO', 'Equipos de aplicación', D.equipos) +
+    catBloque('ACTIVIDAD', 'Actividades de muestreo', D.actividades) +
+  '</div>' +
+  '<div id="msg" class="msg"></div>';
+
+  function catBloque(tipo, titulo, valores){
+    return '<div class="cat"><h2>' + titulo + '</h2>' +
+      '<ul>' + valores.map(function(v){ return '<li>' + v + '</li>'; }).join('') + '</ul>' +
+      '<div class="agregar"><input placeholder="Agregar…" data-tipo="' + tipo + '">' +
+      '<button class="sec chico" data-add="' + tipo + '">+</button></div></div>';
+  }
+
+  $('volver').onclick = function(){
+    llamar('agregarACatalogo', [l.id, b.dataset.add, input.value], function(d){ D = d; vistaInicio(); }).datosInicio();
+  };
+  [].forEach.call(app.querySelectorAll('button[data-fn]'), function(b){
+    b.onclick = function(){ accionMenu(b.dataset.fn); };
+  });
+  [].forEach.call(app.querySelectorAll('button[data-add]'), function(b){
+    b.onclick = function(){
+      var input = app.querySelector('input[data-tipo="' + b.dataset.add + '"]');
+      if (!input.value.trim()) return;
+      b.disabled = true;
+      llamar('agregarACatalogo', [l.id, b.dataset.add, input.value],
+        function(){
+          msg('Agregado al catálogo.', 'ok');
+          llamar('contextoLinea', [l.id], function(ctx){ D = ctx; vistaLinea(); });
+        },
+        function(e){ msg(e.message, 'err'); b.disabled = false; });
+    };
+  });
+}
+
+/* ==================== CAPA BASE DEL INGENIO ==================== */
+function vistaBase(){
+  app.innerHTML =
+  '<h1>Capa base del ingenio</h1>' +
+  '<p class="guia">Suba primero el archivo a Drive —la capa completa pesa varios MB y no conviene ' +
+  'pasarla por el navegador— y pegue aquí su ID. El ID es lo que aparece en la URL entre ' +
+  '<code>/d/</code> y <code>/view</code>. Acepta <code>.geojson</code> o <code>.zip</code> con el shapefile.</p>' +
+
+  (D.lotes > 0
+    ? '<div class="msg ok" style="display:block">Ya hay ' + D.lotes + ' lotes cargados y ' +
+      D.fincas + ' fincas. Volver a importar reemplaza la capa completa y conserva los nombres de finca.</div>'
+    : '') +
+
+  '<label for="idArchivo">ID del archivo en Drive</label>' +
+  '<input id="idArchivo" placeholder="1a2B3c...">' +
+  '<div class="acciones"><button id="btnLeer" class="sec">Leer archivo</button></div>' +
+
+  '<fieldset id="mapeo" style="display:none"><legend>Qué campo es cada cosa</legend>' +
+    '<div class="fila">' +
+      '<div><label>Código de lote</label><select id="c_lote"></select></div>' +
+      '<div><label>Descripción</label><select id="c_desc"></select></div>' +
+      '<div><label>Variedad</label><select id="c_variedad"></select></div></div>' +
+    '<div class="fila">' +
+      '<div><label>Área del ingenio</label><select id="c_area"></select></div>' +
+      '<div><label>Distanciamiento</label><select id="c_dist"></select></div>' +
+      '<div><label>Textura</label><select id="c_textura"></select></div></div>' +
+    '<div class="fila">' +
+      '<div><label>Tipo de riego</label><select id="c_riego"></select></div>' +
+      '<div><label>Tipo de cosecha</label><select id="c_cosecha"></select></div>' +
+      '<div><label>Estrato</label><select id="c_estrato"></select></div></div>' +
+    '<p class="guia" style="margin:10px 0 0">El área que usa el módulo es la que se calcula del ' +
+    'polígono. El área del ingenio se guarda aparte, solo para comparar.</p>' +
+    '<div class="acciones"><button id="btnImportar">Importar capa</button></div>' +
+  '</fieldset>' +
+  '<div id="msg" class="msg"></div>';
+
+  var campos = [];
+  $('btnLeer').onclick = function(){
+    if (!val('idArchivo')) return msg('Pegue el ID del archivo.', 'err');
+    msg('Leyendo la capa…', 'info');
+    llamar('inspeccionarCapaBase', [val('idArchivo')], function(info){
+        campos = info.campos;
+        $('mapeo').style.display = 'block';
+        [['c_lote',/lote|plot|codigo/i,false],['c_desc',/desc|sector|nombre/i,true],
+         ['c_variedad',/varied/i,true],['c_area',/area|área|ha/i,true],
+         ['c_dist',/dist|siemb/i,true],['c_textura',/text/i,true],
+         ['c_riego',/riego/i,true],['c_cosecha',/cosecha/i,true],['c_estrato',/estrat/i,true]]
+        .forEach(function(c){
+          llenarSelect($(c[0]), campos, null, c[2]);
+          autoseleccionar($(c[0]), c[1]);
+        });
+        msg(info.n + ' polígonos en ' + info.archivo + '.', 'ok');
+      }, function(e){ msg(e.message, 'err'); });
+  };
+
+  $('btnImportar').onclick = function(){
+    var btn = this;
+    if (!val('c_lote')) return msg('Indique cuál campo trae el código de lote.', 'err');
+    btn.disabled = true;
+    msg('Importando y calculando áreas… puede tardar un minuto.', 'info');
+    llamar('importarCapaBase', [{
+        idArchivo: val('idArchivo'), crs: 'AUTO',
+        campos: { lote: val('c_lote'), desc: val('c_desc'), variedad: val('c_variedad'),
+                  area: val('c_area'), dist: val('c_dist'), textura: val('c_textura'),
+                  riego: val('c_riego'), cosecha: val('c_cosecha'), estrato: val('c_estrato') }
+      }], function(r){
+        msg('Listo: ' + r.lotes + ' lotes, ' + r.hectareas + ' ha y ' + r.fincas + ' fincas.<br>' +
+            'Escriba los nombres en la hoja FINCAS y use <b>Aplicar nombres de finca</b>.', 'ok');
+        btn.disabled = false;
+      }, function(e){ msg(e.message, 'err'); btn.disabled = false; });
+  };
+}
+
+/* ====================== PROTOCOLOS EN PDF ====================== */
+function vistaProtocolos(){
+  app.className = 'protocolos';
+  app.innerHTML =
+  '<div class="repo">' +
+    '<aside>' +
+      '<h1>Protocolos</h1>' +
+      '<div class="subir">' +
+        '<input type="file" id="pdf" accept="application/pdf">' +
+        '<input id="titulo" placeholder="Título">' +
+        '<div class="fila">' +
+          '<div><input id="version" placeholder="Versión" value="1.0"></div>' +
+          '<div><input id="autor" placeholder="Autor"></div></div>' +
+        '<select id="linea"><option value="">Sin línea</option>' +
+          (D.lineas||[]).map(function(l){ return '<option value="' + l.id + '">' + l.nombre + '</option>'; }).join('') +
+        '</select>' +
+        '<select id="ensayo"><option value="">Sin ensayo asociado</option>' +
+          (D.ensayos||[]).map(function(e){ return '<option value="' + e.id + '">' + e.id + ' — ' + e.nombre + '</option>'; }).join('') +
+        '</select>' +
+        '<button id="subir">Subir PDF</button>' +
+      '</div>' +
+      '<ul id="listaPdf" class="lista"></ul>' +
+      '<div id="msg" class="msg"></div>' +
+    '</aside>' +
+    '<section id="visor"><div class="vacio">Elija un protocolo de la lista para verlo aquí.</div></section>' +
+  '</div>';
+
+  function pintarLista(){
+    $('listaPdf').innerHTML = (D.protocolos||[]).map(function(p){
+      return '<li data-id="' + p.id + '" data-archivo="' + p.idArchivo + '" data-url="' + p.url + '">' +
+        p.titulo + '<span>v' + p.version + (p.ensayo ? ' · ' + p.ensayo : '') +
+        (p.fecha ? ' · ' + p.fecha : '') + '</span>' +
+        '<button class="quitar" data-borrar="' + p.id + '" title="Eliminar">×</button></li>';
+    }).join('') || '<li class="vacio">Todavía no hay protocolos.</li>';
+
+    [].forEach.call($('listaPdf').querySelectorAll('li[data-archivo]'), function(li){
+      li.onclick = function(ev){
+        if (ev.target.dataset.borrar) return;
+        [].forEach.call($('listaPdf').children, function(x){ x.className = ''; });
+        li.className = 'sel';
+        $('visor').innerHTML =
+          '<iframe src="https://drive.google.com/file/d/' + li.dataset.archivo + '/preview"></iframe>' +
+          '<div class="pie"><a href="' + li.dataset.url + '" target="_blank">Abrir en Drive / descargar</a></div>';
+      };
+    });
+    [].forEach.call($('listaPdf').querySelectorAll('[data-borrar]'), function(b){
+      b.onclick = function(ev){
+        ev.stopPropagation();
+        if (!confirm('¿Eliminar este protocolo? El PDF se manda a la papelera de Drive.')) return;
+        llamar('eliminarProtocolo', [b.dataset.borrar], function(lista){ D.protocolos = lista; pintarLista(); msg('Eliminado.', 'ok'); }, function(e){ msg(e.message, 'err'); });
+      };
+    });
+  }
+  pintarLista();
+
+  $('subir').onclick = function(){
+    var f = $('pdf').files[0];
+    if (!f) return msg('Elija el archivo PDF.', 'err');
+    var btn = this; btn.disabled = true;
+    msg('Subiendo…', 'info');
+    var lector = new FileReader();
+    lector.onload = function(){
+      llamar('subirProtocolo', [{
+          nombre: f.name, base64: lector.result.split(',')[1],
+          titulo: val('titulo'), version: val('version'), autor: val('autor'),
+          linea: val('linea'), idEnsayo: val('ensayo')
+        }], function(lista){
+          D.protocolos = lista; pintarLista();
+          msg('Protocolo guardado.', 'ok');
+          $('pdf').value = ''; $('titulo').value = '';
+          btn.disabled = false;
+        }, function(e){ msg(e.message, 'err'); btn.disabled = false; });
+    };
+    lector.readAsDataURL(f);
+  };
+}
+
+/* ===================================================================
+ * APP DE CAMPO — pantalla móvil con el croquis como centro
+ * =================================================================== */
+var APP = { ctx: null, parcela: null, mapa: null, capas: {}, yo: null, aro: null,
+            actividad: '', variable: '', unidad: '', modo: 'MUESTREO', hechas: {} };
+
+/* ===================================================================
+ * ACCESO Y SESIÓN
+ * El token se guarda en el dispositivo para no pedir PIN cada vez.
+ * =================================================================== */
+var SESION = null;
+
+function tokenGuardado(){
+  try { return localStorage.getItem('ens_token') || ''; } catch(e){ return ''; }
+}
+function guardarToken(t){
+  try { t ? localStorage.setItem('ens_token', t) : localStorage.removeItem('ens_token'); } catch(e){}
+}
+
+/** Punto de entrada de la app: decide entre acceso y espacio de trabajo. */
+function vistaApp(){
+  document.body.setAttribute('data-vista','app');
+  var t = tokenGuardado();
+  if (!t) return vistaAcceso();
+  app.innerHTML = '<div class="cargando">Entrando…</div>';
+  llamar('contextoSesion', [t], function(r){
+      if (!r.ok) { guardarToken(''); return vistaAcceso(); }
+      SESION = r.sesion;
+      vistaDepartamentos();
+    }, function(){ guardarToken(''); vistaAcceso(); });
+}
+
+function vistaAcceso(mensaje){
+  app.className = 'acceso';
+  app.innerHTML =
+  '<div class="caja">' +
+    '<div class="marca">' + (D.libro || 'Módulo de Ensayos') + '</div>' +
+    '<h1>Entrar</h1>' +
+    '<label for="usuario">Usuario</label>' +
+    '<input id="usuario" autocomplete="username" autocapitalize="none" spellcheck="false">' +
+    '<label for="pin">PIN</label>' +
+    '<input id="pin" type="password" inputmode="numeric" autocomplete="current-password">' +
+    '<button id="entrar">Entrar</button>' +
+    '<div id="msg" class="msg' + (mensaje ? ' err' : '') + '">' + (mensaje || '') + '</div>' +
+  '</div>';
+  if (mensaje) $('msg').style.display = 'block';
+
+  function entrar(){
+    var u = val('usuario'), p = val('pin');
+    if (!u || !p) return msg('Escriba usuario y PIN.', 'err');
+    $('entrar').disabled = true;
+    msg('Verificando…', 'info');
+    llamar('iniciarSesion', [u, p, navigator.userAgent], function(r){
+        if (!r.ok) { $('entrar').disabled = false; $('pin').value = ''; return msg(r.error, 'err'); }
+        guardarToken(r.token);
+        SESION = r.sesion;
+        vistaDepartamentos();
+      }, function(e){ msg(e.message, 'err'); $('entrar').disabled = false; });
+  }
+  $('entrar').onclick = entrar;
+  $('pin').onkeydown = function(ev){ if (ev.key === 'Enter') entrar(); };
+  $('usuario').focus();
+}
+
+function salir(){
+  var t = tokenGuardado();
+  guardarToken(''); SESION = null;
+  llamar('cerrarSesion', [t]);
+  vistaAcceso('Sesión cerrada.');
+}
+
+/** Si el servidor dice que la sesión venció, se regresa al acceso. */
+function errorServidor(e){
+  if (String(e.message).indexOf('SESION_VENCIDA') >= 0) {
+    guardarToken('');
+    return vistaAcceso('Su sesión venció. Vuelva a entrar.');
+  }
+  msg(e.message, 'err');
+}
+
+/* --------------------- Elegir departamento --------------------- */
+function vistaDepartamentos(){
+  app.className = '';
+  var deptos = SESION.departamentos || [];
+
+  // El rol de campo entra directo al muestreo: una sola pantalla, sin menús.
+  if (SESION.rol === 'CAMPO') return listaEnsayosApp(deptos.length === 1 ? deptos[0].id : '');
+
+  app.innerHTML =
+  '<header class="movil"><div class="quien"><b>' + SESION.nombre + '</b>' +
+    '<span>' + SESION.rolNombre + (SESION.zona ? ' · zona ' + SESION.zona : '') + '</span></div>' +
+    '<button class="salir" id="salir">Salir</button></header>' +
+  '<div class="deptos">' +
+    (deptos.length
+      ? deptos.map(function(d){
+          return '<button class="depto" data-id="' + d.id + '" style="border-left:5px solid ' + d.color + '">' +
+                 '<b>' + d.nombre + '</b><span>ver ensayos y muestrear</span></button>';
+        }).join('')
+      : '<p class="vacio">Su usuario no tiene departamentos asignados.</p>') +
+  '</div>' +
+  '<div id="msg" class="msg"></div>';
+
+  $('salir').onclick = salir;
+  [].forEach.call(app.querySelectorAll('.depto'), function(b){
+    b.onclick = function(){ listaEnsayosApp(b.dataset.id); };
+  });
+}
+
+
+/* ------------------------- 1. Elegir ensayo ------------------------- */
+function listaEnsayosApp(filtro){
+  APP.ctx = null;
+  if (!D.ensayos) {
+    app.innerHTML = '<div class="cargando">Cargando ensayos…</div>';
+    return llamar('appInicio', [tokenGuardado()], function(r){ D.ensayos = r.ensayos; D.lineas = r.lineas; listaEnsayosApp(filtro); }, errorServidor);
+  }
+  var ens = D.ensayos || [];
+  if (filtro) ens = ens.filter(function(e){ return e.linea === filtro; });
+
+  app.innerHTML =
+  '<header class="movil' + (SESION && SESION.rol !== 'CAMPO' ? ' con-volver' : '') + '">' +
+    (SESION && SESION.rol !== 'CAMPO' ? '<button class="atras" id="volverDep">‹</button>' : '') +
+    '<div><h1>Ensayos</h1><p>' + (filtro && D.lineas ? (D.lineas.filter(function(l){ return l.id === filtro; })[0]||{}).nombre || 'Elija dónde va a trabajar' : 'Elija dónde va a trabajar') + '</p></div>' +
+  '</header>' +
+  '<div class="filtros">' +
+    '<button class="f ' + (!filtro ? 'on' : '') + '" data-f="">Todas</button>' +
+    (D.lineas||[]).map(function(l){
+      return '<button class="f ' + (filtro === l.id ? 'on' : '') + '" data-f="' + l.id + '">' +
+             l.nombre.split(' / ')[0] + '</button>';
+    }).join('') +
+  '</div>' +
+  '<div class="lista-ensayos">' +
+    (ens.length ? ens.map(function(e){
+      return '<button class="ens" data-id="' + e.id + '">' +
+             '<b>' + e.nombre + '</b>' +
+             '<span>' + (e.finca || '') + (e.lote ? ' · lote ' + e.lote : '') +
+             (e.desc ? ' · ' + e.desc : '') + '</span>' +
+             '<em>' + (e.tipo || '') + '</em></button>';
+    }).join('') : '<p class="vacio">No hay ensayos en esta línea.</p>') +
+  '</div>' +
+  '<div id="msg" class="msg"></div>';
+
+  if ($('volverDep')) $('volverDep').onclick = function(){ vistaDepartamentos(); };
+  [].forEach.call(app.querySelectorAll('.f'), function(b){
+    b.onclick = function(){ listaEnsayosApp(b.dataset.f); };
+  });
+  [].forEach.call(app.querySelectorAll('.ens'), function(b){
+    b.onclick = function(){ abrirEnsayoApp(b.dataset.id); };
+  });
+  if (D.idEnsayo) abrirEnsayoApp(D.idEnsayo);
+}
+
+function abrirEnsayoApp(id){
+  app.innerHTML = '<div class="cargando">Cargando croquis…</div>';
+  llamar('appEnsayo', [tokenGuardado(), id], function(ctx){
+      if (!ctx.ok) { listaEnsayosApp(); return msg(ctx.error || 'No se pudo abrir.', 'err'); }
+      APP.ctx = ctx;
+      APP.hechas = {};
+      (ctx.capturadasHoy || []).forEach(function(k){ APP.hechas[k] = true; });
+      APP.actividad = (ctx.plan[0] && ctx.plan[0].actividad) || (ctx.actividades||[])[0] || '';
+      elegirVariable(ctx.plan[0]);
+      pantallaEnsayo();
+    }, function(e){ listaEnsayosApp(); errorServidor(e); });
+}
+
+function elegirVariable(plan){
+  APP.variable = plan ? plan.variable : '';
+  APP.unidad = plan ? (plan.unidad || '') : '';
+  APP.actividad = plan ? plan.actividad : APP.actividad;
+  APP.modo = /cosecha/i.test(APP.actividad || '') ? 'COSECHA' : 'MUESTREO';
+}
+
+/* ---------------------- 2. Ensayo: mapa y lista ---------------------- */
+function pantallaEnsayo(){
+  var c = APP.ctx, e = c.ensayo;
+  app.innerHTML =
+  '<header class="movil con-volver">' +
+    '<button class="atras" id="atras">‹</button>' +
+    '<div><h1>' + e.nombre + '</h1>' +
+    '<p>' + (e.finca||'') + ' · lote ' + (e.lote||'') + ' · ' + c.parcelas.length + ' parcelas' +
+    (e.dde !== null ? ' · ' + e.dde + ' DDE' : '') + '</p></div>' +
+  '</header>' +
+
+  '<div class="selector">' +
+    '<select id="selPlan">' +
+      (c.plan.length
+        ? c.plan.map(function(m, i){
+            return '<option value="' + i + '">' + (m.actividad || 'Muestreo') + ' — ' + m.variable +
+                   (m.unidad ? ' (' + m.unidad + ')' : '') + '</option>';
+          }).join('')
+        : '<option value="-1">Sin plan de muestreo</option>') +
+      '<option value="C">Cosecha — peso por parcela</option>' +
+    '</select>' +
+    '<div class="avance" id="avance"></div>' +
+  '</div>' +
+
+  '<div class="pestanas">' +
+    '<button class="p on" data-p="mapa">Croquis</button>' +
+    '<button class="p" data-p="lista">Lista</button>' +
+  '</div>' +
+
+  '<div id="panelMapa" class="panel"><div id="mapa"></div>' +
+    '<button class="gps" id="gps" title="Mi ubicación">◎</button></div>' +
+  '<div id="panelLista" class="panel oculto"></div>' +
+
+  '<div id="hoja" class="hoja"></div>' +
+  '<div id="msg" class="msg"></div>';
+
+  $('atras').onclick = function(){ pararGPS(); listaEnsayosApp(); };
+  $('selPlan').onchange = function(){
+    var v = this.value;
+    if (v === 'C') { APP.modo = 'COSECHA'; APP.variable = 'RENDIMIENTO'; APP.unidad = 'kg';
+                     APP.actividad = 'Cosecha'; }
+    else elegirVariable(c.plan[Number(v)]);
+    pintarAvance(); pintarLista(); colorearMapa();
+  };
+  [].forEach.call(app.querySelectorAll('.pestanas .p'), function(b){
+    b.onclick = function(){
+      [].forEach.call(app.querySelectorAll('.pestanas .p'), function(x){ x.className = 'p'; });
+      b.className = 'p on';
+      $('panelMapa').className = 'panel' + (b.dataset.p === 'mapa' ? '' : ' oculto');
+      $('panelLista').className = 'panel' + (b.dataset.p === 'lista' ? '' : ' oculto');
+      if (b.dataset.p === 'mapa' && APP.mapa) setTimeout(function(){ APP.mapa.invalidateSize(); }, 80);
+    };
+  });
+  $('gps').onclick = centrarEnMi;
+
+  pintarAvance();
+  pintarLista();
+  montarMapa();
+}
+
+function clave(idParcela){
+  return idParcela + '|' + (APP.modo === 'COSECHA' ? '__COSECHA__' : APP.variable);
+}
+
+function pintarAvance(){
+  var n = APP.ctx.parcelas.filter(function(p){ return APP.hechas[clave(p.id)]; }).length;
+  var t = APP.ctx.parcelas.length;
+  $('avance').innerHTML = '<b>' + n + '</b>/' + t +
+    '<div class="barra"><i style="width:' + (t ? n / t * 100 : 0) + '%"></i></div>';
+}
+
+/* ----------------------------- Croquis ----------------------------- */
+function montarMapa(){
+  var conGeom = APP.ctx.parcelas.some(function(p){ return p.geom; });
+  if (!conGeom) {
+    $('panelMapa').innerHTML =
+      '<div class="vacio">Este ensayo no tiene croquis cargado.<br>' +
+      'Use la pestaña <b>Lista</b> para capturar.</div>';
+    return;
+  }
+  cargarLeaflet(function(){
+    if (typeof L === 'undefined') {
+      $('panelMapa').innerHTML = '<div class="vacio">Sin conexión para cargar el mapa. ' +
+        'Capture desde la pestaña <b>Lista</b>.</div>';
+      return;
+    }
+    APP.mapa = L.map('mapa', { zoomControl: false, attributionControl: false });
+    L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+      { maxZoom: 21, subdomains: ['mt0','mt1','mt2','mt3'] }).addTo(APP.mapa);
+
+    var grupo = [];
+    APP.ctx.parcelas.forEach(function(p){
+      if (!p.geom) return;
+      var capa = L.geoJSON(p.geom, { style: estilo(p) }).addTo(APP.mapa);
+      capa.bindTooltip(String(p.num), { permanent: true, direction: 'center', className: 'etq' });
+      capa.on('click', function(){ abrirHoja(p); });
+      APP.capas[p.id] = capa;
+      grupo.push(capa);
+    });
+    if (grupo.length) {
+      var b = grupo[0].getBounds();
+      grupo.forEach(function(c){ b.extend(c.getBounds()); });
+      APP.mapa.fitBounds(b, { padding: [30, 30] });
+    }
+    iniciarGPS();
+  });
+}
+
+function estilo(p){
+  var hecha = APP.hechas[clave(p.id)];
+  return { color: hecha ? '#8DE0A8' : '#ffffff', weight: hecha ? 3 : 1.6,
+           fillColor: hecha ? '#1F6B45' : colorTrat(p.trat), fillOpacity: hecha ? .72 : .5 };
+}
+
+function colorTrat(t){
+  var lista = APP.ctx.parcelas.map(function(p){ return p.trat; });
+  var u = [];
+  lista.forEach(function(x){ if (u.indexOf(x) < 0) u.push(x); });
+  u.sort();
+  var i = u.indexOf(t);
+  return PALETA[i < 0 ? 0 : i % PALETA.length];
+}
+
+function colorearMapa(){
+  APP.ctx.parcelas.forEach(function(p){
+    if (APP.capas[p.id]) APP.capas[p.id].setStyle(estilo(p));
+  });
+}
+
+/* ------------------------------- GPS ------------------------------- */
+function iniciarGPS(){
+  if (!navigator.geolocation || !APP.mapa) return;
+  APP.watch = navigator.geolocation.watchPosition(function(pos){
+    var ll = [pos.coords.latitude, pos.coords.longitude];
+    APP.ultima = { lat: ll[0].toFixed(7), lon: ll[1].toFixed(7), prec: Math.round(pos.coords.accuracy) };
+    if (!APP.yo) {
+      APP.aro = L.circle(ll, { radius: pos.coords.accuracy, color: '#4C9BE8',
+                               fillColor: '#4C9BE8', fillOpacity: .15, weight: 1 }).addTo(APP.mapa);
+      APP.yo = L.circleMarker(ll, { radius: 7, color: '#fff', weight: 2,
+                                    fillColor: '#2F7FD6', fillOpacity: 1 }).addTo(APP.mapa);
+    } else {
+      APP.yo.setLatLng(ll); APP.aro.setLatLng(ll).setRadius(pos.coords.accuracy);
+    }
+  }, function(){ msg('No se pudo leer el GPS. Active la ubicación del teléfono.', 'err'); },
+     { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+
+function pararGPS(){
+  if (APP.watch) navigator.geolocation.clearWatch(APP.watch);
+  APP.watch = null; APP.yo = null; APP.aro = null; APP.mapa = null; APP.capas = {};
+}
+
+function centrarEnMi(){
+  if (!APP.yo) return msg('Todavía no hay señal de GPS.', 'info');
+  APP.mapa.setView(APP.yo.getLatLng(), 19);
+  msg('Precisión ' + APP.ultima.prec + ' m', 'ok');
+}
+
+/* -------------------- Hoja de captura por parcela -------------------- */
+function abrirHoja(p){
+  APP.parcela = p;
+  var esCosecha = APP.modo === 'COSECHA';
+  var hecha = APP.hechas[clave(p.id)];
+  $('hoja').className = 'hoja abierta';
+  $('hoja').innerHTML =
+    '<div class="agarre"></div>' +
+    '<div class="cab"><b>Parcela ' + p.num + '</b>' +
+      '<span>' + (p.trat || '') + (p.bloque ? ' · bloque ' + p.bloque : '') +
+      (p.areaHa ? ' · ' + p.areaHa + ' ha' : '') + '</span>' +
+      '<button class="cerrar" id="cerrarHoja">×</button></div>' +
+    (hecha ? '<div class="yacap">Ya tiene registro de hoy. Si guarda otra vez se agrega un dato más.</div>' : '') +
+    '<label>' + (esCosecha ? 'Peso cosechado (kg)' : APP.variable + (APP.unidad ? ' (' + APP.unidad + ')' : '')) + '</label>' +
+    '<input id="valor" type="number" inputmode="decimal" step="0.01" autocomplete="off">' +
+    (esCosecha ? '<label>Humedad (%)</label><input id="humedad" type="number" step="0.1">' : '') +
+    '<label>Observación</label><input id="obs" placeholder="opcional">' +
+    '<div class="botones">' +
+      '<button class="sec" id="saltar">Siguiente</button>' +
+      '<button id="guardarP">Guardar</button>' +
+    '</div>';
+
+  setTimeout(function(){ $('valor').focus(); }, 120);
+  $('cerrarHoja').onclick = cerrarHoja;
+  $('saltar').onclick = function(){ siguienteParcela(p); };
+  $('guardarP').onclick = function(){ guardarParcela(p, this); };
+}
+
+function cerrarHoja(){ $('hoja').className = 'hoja'; APP.parcela = null; }
+
+function siguienteParcela(p){
+  var lista = APP.ctx.parcelas;
+  var i = lista.indexOf(p);
+  for (var k = 1; k <= lista.length; k++) {
+    var sig = lista[(i + k) % lista.length];
+    if (!APP.hechas[clave(sig.id)]) {
+      if (APP.capas[sig.id]) APP.mapa.fitBounds(APP.capas[sig.id].getBounds(), { padding: [60, 60] });
+      return abrirHoja(sig);
+    }
+  }
+  cerrarHoja();
+  msg('Ya están todas las parcelas de esta variable.', 'ok');
+}
+
+function guardarParcela(p, btn){
+  var v = val('valor');
+  if (v === '') return msg('Escriba el valor.', 'err');
+  btn.disabled = true;
+  msg('Guardando…', 'info');
+  var pos = APP.ultima || {};
+
+  function listo(){
+    APP.hechas[clave(p.id)] = true;
+    if (APP.capas[p.id]) APP.capas[p.id].setStyle(estilo(p));
+    pintarAvance(); pintarLista();
+    btn.disabled = false;
+    msg('Parcela ' + p.num + ' guardada.', 'ok');
+    siguienteParcela(p);
+  }
+  function falla(e){ msg(e.message, 'err'); btn.disabled = false; }
+
+  if (APP.modo === 'COSECHA') {
+    llamar('guardarCosecha', [{
+      idEnsayo: APP.ctx.ensayo.id, observador: '',
+      registros: [{ idParcela: p.id, peso: v, humedad: val('humedad'), obs: val('obs') }]
+    }], listo, falla);
+  } else {
+    llamar('guardarMuestreo', [{
+      idEnsayo: APP.ctx.ensayo.id, actividad: APP.actividad, variable: APP.variable,
+      unidad: APP.unidad, observador: '', lat: pos.lat || '', lon: pos.lon || '',
+      registros: [{ idParcela: p.id, valor: v }]
+    }], listo, falla);
+  }
+}
+
+/* --------------------------- Pestaña lista --------------------------- */
+function pintarLista(){
+  if (!$('panelLista')) return;
+  $('panelLista').innerHTML =
+    '<div class="filas">' + APP.ctx.parcelas.map(function(p){
+      var hecha = APP.hechas[clave(p.id)];
+      return '<button class="fila ' + (hecha ? 'ok' : '') + '" data-id="' + p.id + '">' +
+        '<i style="background:' + colorTrat(p.trat) + '"></i>' +
+        '<b>' + p.num + '</b><span>' + (p.trat || '') +
+        (p.bloque ? ' · bloque ' + p.bloque : '') + '</span>' +
+        '<em>' + (hecha ? '✓' : '') + '</em></button>';
+    }).join('') + '</div>';
+
+  [].forEach.call($('panelLista').querySelectorAll('.fila'), function(b){
+    b.onclick = function(){
+      var p = APP.ctx.parcelas.filter(function(x){ return x.id === b.dataset.id; })[0];
+      abrirHoja(p);
+    };
+  });
+}
+
+/* ========================= enrutador ========================= */
+var PANTALLAS = { inicio: vistaInicio, linea: vistaLinea, base: vistaBase,
+                  protocolos: vistaProtocolos, panel: vistaPanel, ensayo: vistaEnsayo,
+                  geo: vistaGeo, indices: vistaIndices, croquis: vistaCroquis, app: vistaApp };
+
+function dibujar(vista){ (PANTALLAS[vista] || vistaApp)(); }
+
+dibujar(VISTA);
+</script>
+</body>
+</html>
