@@ -240,6 +240,21 @@
   .hall b{font-size:13.5px} .hall span{display:block;font-size:11px;color:var(--tenue);text-transform:uppercase;letter-spacing:.5px}
   .hall p{margin:6px 0 0;font-size:13px;color:var(--texto)}
 
+  /* ======================= ARRASTRAR ARCHIVOS ======================= */
+  .arrastre{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    min-height:120px;padding:18px;margin:6px 0 4px;border:2px dashed #C9D3C9;border-radius:12px;background:#fff;
+    text-align:center;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--texto);
+    transition:border-color .15s,background .15s}
+  .arrastre:hover,.arrastre.encima{border-color:var(--verde);background:var(--verde-tenue)}
+  .arrastre input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .arrastre .ico{color:var(--verde)} .arrastre .ico svg{width:28px;height:28px}
+  .arrastre b{font-size:14.5px;color:var(--ink);font-weight:600}
+  .arrastre .nombre{font-size:12.5px;color:var(--tenue);word-break:break-all}
+  .arrastre.con-archivo{border-style:solid;border-color:var(--verde)}
+  .arrastre.con-archivo .nombre{color:var(--verde);font-weight:600}
+  .progreso{height:10px;background:var(--linea);border-radius:5px;overflow:hidden;margin:10px 0 4px}
+  .progreso i{display:block;height:100%;width:0;background:var(--verde);transition:width .3s}
+
   /* ======================= MENSAJES Y VENTANAS ======================= */
   #aviso{position:fixed;left:12px;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:3000;max-width:560px;
     margin:0 auto;border-radius:10px;padding:12px 40px 12px 14px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.18);
@@ -368,7 +383,7 @@ var app = document.getElementById('app');
 
 /* Dirección /exec del libro publicado. Solo la usa la copia de GitHub. */
 var API_URL = 'https://script.google.com/macros/s/AKfycbz3JITkjJNk7md28vMREtCcraXEe426YyRTXq4FUJJ84hcZsb7j_i4mimbDdCrqnPMyjg/exec';
-var ESPERA_MAXIMA = 60000;
+var ESPERA_MAXIMA = 180000;   // Apps Script permite hasta 6 minutos por llamada
 var SESION = null;
 var PARAMS = (function(){
   var o = {};
@@ -396,7 +411,7 @@ function guardarToken(t){ t ? Local.set('ens_token', t) : Local.del('ens_token')
 function llamarServidor(metodo, args){
   return new Promise(function(resolver, rechazar){
     var listo = false;
-    var reloj = setTimeout(function(){ fin(new Error('El servidor no respondió. Revise la señal e intente de nuevo.')); }, ESPERA_MAXIMA);
+    var reloj = setTimeout(function(){ fin(new Error('El servidor tardó demasiado en responder. Puede que haya terminado: revise antes de repetir.')); }, ESPERA_MAXIMA);
     function fin(err, datos){
       if (listo) return; listo = true; clearTimeout(reloj);
       err ? rechazar(err) : resolver(datos);
@@ -480,6 +495,40 @@ function ventana(titulo, html, alCerrar){
   v.addEventListener('click', function(e){ if (e.target === v) cerrar(); });
   return { el: v.querySelector('.cuerpo'), cerrar: cerrar };
 }
+
+/**
+ * Zona para soltar archivos arrastrándolos desde la computadora, o
+ * tocarla para elegirlos. Lleva dentro el input de archivo de siempre,
+ * así el resto del código sigue leyendo input.files.
+ */
+function zonaArchivo(id, texto, accept, multiple){
+  return '<label class="arrastre" data-arrastre><input type="file" id="' + id + '"' + (accept ? ' accept="' + accept + '"' : '') +
+    (multiple ? ' multiple' : '') + '><span class="ico">' + IC.subir + '</span><b>' + h(texto) + '</b>' +
+    '<span class="nombre">o toque aquí para elegir' + (multiple ? ' (puede elegir varios)' : '') + '</span></label>';
+}
+(function(){
+  function zona(e){ return e.target && e.target.closest ? e.target.closest('[data-arrastre]') : null; }
+  // Fuera de una zona, soltar un archivo no debe abrirlo en la pestaña.
+  document.addEventListener('dragover', function(e){ e.preventDefault(); var z = zona(e); if (z) z.classList.add('encima'); });
+  document.addEventListener('dragleave', function(e){ var z = zona(e); if (z) z.classList.remove('encima'); });
+  document.addEventListener('drop', function(e){
+    e.preventDefault();
+    var z = zona(e);
+    if (!z || !e.dataTransfer || !e.dataTransfer.files.length) return;
+    z.classList.remove('encima');
+    var input = z.querySelector('input[type=file]');
+    if (!input.multiple && e.dataTransfer.files.length > 1) return msg('Suelte un solo archivo.', 'err');
+    input.files = e.dataTransfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  document.addEventListener('change', function(e){
+    var z = zona(e);
+    if (!z || e.target.type !== 'file') return;
+    var n = [].map.call(e.target.files, function(f){ return f.name + ' (' + (f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(f.size / 1024)) + ' KB') + ')'; });
+    z.classList.toggle('con-archivo', n.length > 0);
+    z.querySelector('.nombre').textContent = n.length ? n.join(', ') : 'o toque aquí para elegir';
+  });
+})();
 
 /** Lee un archivo elegido y lo entrega en base64. */
 function leerArchivo(input, maxMB){
@@ -975,7 +1024,7 @@ function vistaProtocolos(depto, nombre){
     cuerpo.innerHTML =
       '<p class="guia">Protocolos generales del departamento. Los de cada ensayo se guardan en la pestaña Archivos del ensayo.</p>' +
       (puede('crear') ? '<section class="seccion"><h2>Subir</h2><div class="fila">' +
-        '<div><label>Título</label><input id="aTitulo"></div><div><label>Archivo</label><input type="file" id="aArchivo"></div></div>' +
+        '<div><label>Título</label><input id="aTitulo"></div></div>' + zonaArchivo('aArchivo', 'Suelte aquí el protocolo (PDF u otro documento)') +
         '<div class="acciones"><button id="aSubir">Subir</button></div></section>' : '') +
       '<section class="seccion"><h2>Documentos</h2>' + listaArchivos(lista, puede('crear')) + '</section>';
     if ($('aSubir')) $('aSubir').onclick = function(){
@@ -1077,9 +1126,9 @@ function vistaNuevoEnsayo(depto){
 
     '<section class="seccion"><h2>Documentos (opcional)</h2>' +
       '<p class="guia">Se suben al terminar de crear el ensayo. El shapefile o GeoJSON de parcelas se enlaza en el paso siguiente.</p>' +
-      '<div class="fila"><div><label>Protocolo (PDF)</label><input type="file" id="nProt" accept=".pdf,application/pdf"></div>' +
-      '<div><label>Croquis (imagen o PDF)</label><input type="file" id="nCroq" accept="image/*,.pdf"></div>' +
-      '<div><label>Parcelas (.zip con SHP, .geojson, .kml)</label><input type="file" id="nShp" accept=".zip,.geojson,.json,.kml,.kmz"></div></div>' +
+      '<div class="fila"><div><label>Protocolo</label>' + zonaArchivo('nProt', 'Protocolo en PDF', '.pdf,application/pdf') + '</div>' +
+      '<div><label>Croquis</label>' + zonaArchivo('nCroq', 'Croquis (imagen o PDF)', 'image/*,.pdf') + '</div>' +
+      '<div><label>Parcelas</label>' + zonaArchivo('nShp', 'SHP (.zip), GeoJSON o KML', '.zip,.geojson,.json,.kml,.kmz') + '</div></div>' +
     '</section>' +
 
     '<div class="acciones"><button id="nCrear">Crear ensayo</button><button class="sec" id="nCancelar">Cancelar</button></div>';
@@ -1363,10 +1412,11 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       (puede('editar') ? '<section class="seccion"><h2>Polígonos de las parcelas</h2>' +
         '<p class="guia">Suba el shapefile (.zip con .shp, .dbf y .prj), GeoJSON o KML. Cada polígono se enlaza con su parcela ' +
         'por el número; el área y el centroide se calculan del polígono.</p>' +
-        '<div class="fila"><div><label>Archivo</label><input type="file" id="gArch" accept=".zip,.geojson,.json,.kml,.kmz"></div>' +
+        zonaArchivo('gArch', 'Suelte aquí el shapefile de parcelas (.zip), el GeoJSON o el KML', '.zip,.geojson,.json,.kml,.kmz') +
+        '<div class="fila">' +
         '<div><label>Coordenadas</label><select id="gCrs">' + opciones([{ v: 'AUTO', t: 'Detectar (.prj)' }, { v: 'WGS84', t: 'Grados WGS84' },
           { v: 'UTM15N', t: 'UTM 15N' }, { v: 'UTM16N', t: 'UTM 16N' }, { v: 'GTM', t: 'GTM' }], 'AUTO') + '</select></div></div>' +
-        '<div class="acciones"><button class="sec" id="gLeer">Leer archivo</button></div><div id="gMapeo"></div></section>' : '') +
+        '<div class="acciones oculto"><button class="sec" id="gLeer">Leer archivo</button></div><div id="gMapeo"></div></section>' : '') +
       '<section class="seccion"><h2>Mapa</h2><div class="mapa-caja"><div class="mapa" id="mapaFicha"></div></div>' +
         '<div class="leyenda" id="leyFicha"></div></section>' +
       '<section class="seccion"><h2>Croquis de bloques</h2><div id="croquis" class="croquis"><div class="cargando">Cargando…</div></div></section>' +
@@ -1378,6 +1428,7 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       '</div></section>';
 
     if ($('gLeer')) $('gLeer').onclick = function(){ leerArchivo($('gArch'), 20).then(mapeo).catch(fallo); };
+    if ($('gArch')) $('gArch').onchange = function(){ if (this.files.length) leerArchivo(this, 20).then(mapeo).catch(fallo); };
     if (archivoParcelas) { var a = archivoParcelas; archivoParcelas = null; mapeo(a); }
 
     rutas(c, {
@@ -1511,8 +1562,9 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       '<div class="fila"><div><label>Fecha del vuelo</label><input id="iFecha" type="date" value="' + fechaHoyISO() + '"></div>' +
       '<div><label>Piloto</label><input id="iPiloto"></div></div>' +
       '<label>Enlace del ortomosaico (opcional)</label><input id="iUrl" placeholder="https://">' +
-      '<label>Archivo CSV</label><input type="file" id="iArch" accept=".csv,.txt">' +
-      '<div class="acciones"><button class="sec" id="iLeer">Leer archivo</button></div><div id="iMapeo"></div>');
+      zonaArchivo('iArch', 'Suelte aquí el CSV de estadísticas zonales', '.csv,.txt') +
+      '<div class="acciones oculto"><button class="sec" id="iLeer">Leer archivo</button></div><div id="iMapeo"></div>');
+    $('iArch').onchange = function(){ if (this.files.length) $('iLeer').onclick(); };
     var archivo = null;
     $('iLeer').onclick = function(){
       leerArchivo($('iArch'), 10).then(function(f){
@@ -1581,7 +1633,7 @@ function vistaEnsayo(id, pestana, archivoParcelas){
     c.innerHTML =
       (puede('editar') ? '<section class="seccion"><h2>Subir archivo</h2><div class="fila">' +
         '<div><label>Tipo</label><select id="fTipo">' + opciones(F.catalogos.archivos.map(function(t){ return { v: t, t: nombres[t] || t }; }), 'PROTOCOLO') + '</select></div>' +
-        '<div><label>Título</label><input id="fTitulo"></div><div><label>Archivo</label><input type="file" id="fArch"></div></div>' +
+        '<div><label>Título</label><input id="fTitulo"></div></div>' + zonaArchivo('fArch', 'Suelte aquí el archivo') +
         '<div class="acciones"><button id="fSubir">Subir</button></div>' +
         '<p class="guia">Para que las parcelas aparezcan en el mapa, suba el shapefile en la pestaña Parcelas y mapa.</p></section>' : '') +
       '<section class="seccion"><h2>Archivos del ensayo</h2>' + listaArchivos(F.archivos, puede('editar')) + '</section>';
@@ -2488,43 +2540,144 @@ function vistaAvisos(estado){
 }
 
 /* ==================== capa de lotes, fincas y cortes ==================== */
+/** El primer campo que cumple el patrón de mayor prioridad. */
+function preferido(campos, patrones){
+  patrones = [].concat(patrones);
+  for (var i = 0; i < patrones.length; i++) {
+    var c = campos.filter(function(x){ return patrones[i].test(x); })[0];
+    if (c) return c;
+  }
+  return '';
+}
+
 function vistaCapa(){
   var cuerpo = armazon('Capa de lotes', 'Configuración');
+  var capa = null;
+  var DEFS = [['lote', 'Código de lote', [/no_lote/i, /^lote$/i, /lote|plot/i], false], ['finca', 'Nombre de la finca', [/desc_finca/i, /nombre_finca|nom_finca/i, /^finca$/i], true],
+    ['zona', 'Zona', /zona/i, true], ['desc', 'Descripción', [/desc_lote/i, /descrip/i], true], ['sector', 'Sector', /^sector/i, true],
+    ['canial', 'Cañal', /canial|cañal/i, true], ['variedad', 'Variedad', /varied/i, true], ['area', 'Área del ingenio', /area|área|^ha$/i, true],
+    ['dist', 'Distanciamiento', /dist|siemb/i, true], ['textura', 'Textura', /text/i, true], ['riego', 'Tipo de riego', /riego/i, true],
+    ['cosecha', 'Tipo de cosecha', /^cosecha|tipo_cos/i, true], ['estrato', 'Estrato', /estrat/i, true]];
+
   api('admin').then(function(r){
     var b = r.base;
     cuerpo.innerHTML =
-      (b.conGeometria ? '<div class="aviso-barra ok"><b>Capa cargada:</b> ' + b.lotes + ' lotes · ' + b.hectareas + ' ha · ' + b.fincas + ' fincas' +
-        (b.actualizada ? ' · actualizada el ' + h(b.actualizada) : '') + (b.origen ? ' desde ' + h(b.origen) : '') + '</div>'
+      (b.conGeometria ? '<div class="aviso-barra ok"><b>Capa en uso:</b> ' + b.lotes + ' lotes · ' + b.hectareas + ' ha · ' + b.fincas + ' fincas' +
+        (b.actualizada ? ' · cargada el ' + h(b.actualizada) : '') + (b.origen ? ' desde ' + h(b.origen) : '') + '</div>'
         : '<div class="aviso-barra"><b>Sin capa cargada.</b> Súbala para que los lotes se llenen solos y el mapa de campo funcione.</div>') +
-      '<p class="guia">Suba el archivo a Drive —la capa completa pesa varios MB— y pegue aquí el enlace de <b>Compartir</b>. ' +
-      'Acepta <code>.geojson</code> o un <code>.zip</code> con el shapefile. Al reemplazarla se conservan los nombres de finca y las zonas ya escritos.</p>' +
-      '<label>Enlace o identificador del archivo en Drive</label><input id="kEnlace" placeholder="https://drive.google.com/file/d/…/view">' +
-      '<div class="acciones"><button class="sec" id="kLeer">Leer archivo</button></div><div id="kMapeo"></div>';
-    $('kLeer').onclick = function(){
-      if (!val('kEnlace')) return msg('Pegue el enlace del archivo.', 'err');
-      msg('Leyendo la capa…', 'info', true);
-      api('inspeccionarCapa', val('kEnlace')).then(function(info){
-        msg(info.n + ' polígonos en ' + h(info.archivo) + '.', 'ok');
-        var defs = [['k_lote', 'Código de lote', /no_lote|^lote|plot/i, false], ['k_finca', 'Nombre de la finca', /desc_finca|nombre_finca/i, true],
-          ['k_zona', 'Zona', /zona/i, true], ['k_desc', 'Descripción', /desc_lote|descripcion/i, true], ['k_sector', 'Sector', /^sector/i, true],
-          ['k_canial', 'Cañal', /canial|cañal/i, true], ['k_variedad', 'Variedad', /varied/i, true], ['k_area', 'Área del ingenio', /area|área/i, true],
-          ['k_dist', 'Distanciamiento', /dist|siemb/i, true], ['k_textura', 'Textura', /text/i, true], ['k_riego', 'Tipo de riego', /riego/i, true],
-          ['k_cosecha', 'Tipo de cosecha', /^cosecha/i, true], ['k_estrato', 'Estrato', /estrat/i, true]];
-        $('kMapeo').innerHTML = '<h3>Qué campo es cada cosa</h3><div class="fila">' + defs.map(function(d){
-          var pre = info.campos.filter(function(c){ return d[2].test(c); })[0] || '';
-          return '<div><label>' + d[1] + '</label><select id="' + d[0] + '">' + opciones(info.campos, pre, d[3] ? '— no usar —' : undefined) + '</select></div>';
-        }).join('') + '</div><p class="guia" style="margin-top:10px">El área que usa el módulo es la calculada del polígono; la del ingenio se guarda aparte para comparar.</p>' +
-          '<div class="acciones"><button id="kImportar">Reemplazar la capa</button></div>';
-        $('kImportar').onclick = function(){
-          if (!confirm('Esto reemplaza los lotes de la capa actual por los ' + info.n + ' del archivo. ¿Continuar?')) return;
-          this.disabled = true; msg('Importando y calculando áreas… puede tardar un minuto.', 'info', true);
-          var c = {}; defs.forEach(function(d){ c[d[0].substring(2)] = val(d[0]); });
-          api('importarCapa', { enlace: val('kEnlace'), crs: 'AUTO', nombreArchivo: info.archivo, campos: c })
-            .then(function(x){ msg(h(x.mensaje), 'ok', true); reemplazar(vistaCapa); }).catch(function(e){ $('kImportar').disabled = false; fallo(e); });
-        };
-      }).catch(fallo);
-    };
+      '<p class="guia">Arrastre el shapefile del ingenio (el .zip, o los archivos .shp, .dbf y .prj juntos) o el GeoJSON. ' +
+      'Su computadora lee el archivo y calcula las áreas; al servidor solo se manda el resultado, por partes. ' +
+      'La capa actual sigue en uso hasta que la nueva termina de subir.</p>' +
+      zonaArchivo('kArch', 'Suelte aquí la capa de lotes', '.zip,.geojson,.json,.shp,.dbf,.prj,.cpg,.shx', true) +
+      '<div class="fila"><div><label>Coordenadas del archivo</label><select id="kCrs">' + opciones([{ v: 'AUTO', t: 'Detectar (.prj o grados)' },
+        { v: 'WGS84', t: 'Grados WGS84' }, { v: 'UTM15N', t: 'UTM zona 15N' }, { v: 'UTM16N', t: 'UTM zona 16N' }, { v: 'GTM', t: 'GTM' }], 'AUTO') +
+      '</select></div></div><div id="kMapeo"></div>';
+    $('kArch').addEventListener('change', leer);
+    $('kCrs').onchange = function(){ if ($('kArch').files.length) leer(); };
   }).catch(fallo);
+
+  function leer(){
+    if (!$('kArch').files.length) return;
+    $('kMapeo').innerHTML = '<div class="cargando">Leyendo el archivo en su computadora…</div>';
+    setTimeout(function(){
+      Geo.leer($('kArch').files, val('kCrs')).then(function(c){ capa = c; mapeo(); })
+        .catch(function(e){ $('kMapeo').innerHTML = ''; msg(h(e.message), 'err'); });
+    }, 30);
+  }
+
+  function mapeo(){
+    $('kMapeo').innerHTML = '<div class="aviso-barra ok" style="margin-top:12px"><b>' + capa.features.length + ' polígonos</b> leídos de ' +
+      h(capa.nombre) + ' · ' + h(capa.proyeccion) + '.</div>' +
+      '<h3>Qué campo es cada cosa</h3><div class="fila">' + DEFS.map(function(d){
+        var pre = preferido(capa.campos, d[2]);
+        return '<div><label>' + d[1] + '</label><select data-k="' + d[0] + '">' + opciones(capa.campos, pre, d[3] ? '— no usar —' : undefined) + '</select></div>';
+      }).join('') + '</div><div id="kResumen"></div>' +
+      '<p class="guia" style="margin-top:10px">El área que usa el módulo es la calculada del polígono; la del ingenio se guarda aparte para comparar.</p>' +
+      '<div class="acciones"><button id="kSubir">Reemplazar la capa</button></div><div id="kAvance"></div>';
+    $$('[data-k]', $('kMapeo')).forEach(function(s){ s.onchange = resumen; });
+    resumen();
+    $('kSubir').onclick = subir;
+  }
+
+  function campos(){ var c = {}; $$('[data-k]', $('kMapeo')).forEach(function(s){ c[s.dataset.k] = s.value; }); return c; }
+
+  /** Une las piezas de cada lote y calcula área y centroide, igual que el servidor. */
+  function construir(){
+    var m = campos(), porLote = {}, orden = [], sinCodigo = 0;
+    capa.features.forEach(function(f){
+      var pr = f.props || {}, lote = String(pr[m.lote] === undefined || pr[m.lote] === null ? '' : pr[m.lote]).trim();
+      if (!lote) { sinCodigo++; return; }
+      if (porLote[lote]) { porLote[lote].polys = porLote[lote].polys.concat(f.polys); return; }
+      porLote[lote] = { props: pr, polys: f.polys.slice() }; orden.push(lote);
+    });
+    var v = function(pr, k){ return m[k] ? (pr[m[k]] === undefined || pr[m[k]] === null ? '' : pr[m[k]]) : ''; };
+    var filas = [], grupos = {}, ha = 0, fincas = {}, zonas = {};
+    orden.forEach(function(lote){
+      var f = porLote[lote], pr = f.props;
+      var area = Geo.areaMulti(f.polys) / 10000, cen = Geo.centroideMulti(f.polys);
+      var zonaCruda = v(pr, 'zona'), zona = zonaCruda === '' ? '' : String(Number(zonaCruda) || zonaCruda);
+      var finca = String(v(pr, 'finca')).trim(), cod = lote.substring(0, 3);
+      ha += area; fincas[cod] = true; if (zona) zonas[zona] = true;
+      filas.push({ LOTE: lote, FINCA: finca, ZONA: zona, DESC_LOTE: v(pr, 'desc'), SECTOR: v(pr, 'sector'), CANIAL: v(pr, 'canial'),
+        VARIEDAD: v(pr, 'variedad'), AREA_HA: Math.round(area * 1e4) / 1e4, AREA_HA_INGENIO: v(pr, 'area'), DIST_SIEMBRA: v(pr, 'dist'),
+        TEXTURA: v(pr, 'textura'), TIPO_RIEGO: v(pr, 'riego'), TIPO_COSECHA: v(pr, 'cosecha'), ESTRATO: v(pr, 'estrato'),
+        LAT: Math.round(cen[1] * 1e7) / 1e7, LON: Math.round(cen[0] * 1e7) / 1e7 });
+      (grupos[cod] = grupos[cod] || []).push({ type: 'Feature',
+        properties: { lote: lote, finca: finca, zona: zona, desc: v(pr, 'desc'), variedad: v(pr, 'variedad'), ha: Math.round(area * 100) / 100 },
+        geometry: Geo.geometriaDe(Geo.redondearPolys(f.polys, 6)) });
+    });
+    return { filas: filas, grupos: grupos, ha: ha, fincas: Object.keys(fincas).length, zonas: Object.keys(zonas).sort(function(a, b){ return a - b; }), sinCodigo: sinCodigo };
+  }
+
+  function resumen(){
+    var c = construir();
+    $('kResumen').innerHTML = '<div class="cifras" style="margin-top:14px">' + cifra(c.filas.length, 'lotes') + cifra(numero(c.ha, 1), 'hectáreas') +
+      cifra(c.fincas, 'fincas') + cifra(c.zonas.length ? c.zonas.join(', ') : '—', 'zonas') + '</div>' +
+      (c.sinCodigo ? '<div class="aviso-barra">' + c.sinCodigo + ' polígonos no traen código de lote en ese campo y se omitirán.</div>' : '') +
+      (!campos().zona ? '<div class="aviso-barra">Sin campo de zona: se conservan las zonas que ya tiene cada finca. Revíselas luego en Fincas y zonas.</div>' : '');
+  }
+
+  function subir(){
+    var c = construir();
+    if (!c.filas.length) return msg('Ningún polígono trae el código de lote en el campo elegido.', 'err');
+    if (!confirm('Se reemplaza la capa actual por ' + c.filas.length + ' lotes (' + numero(c.ha, 1) + ' ha). ¿Continuar?')) return;
+    var boton = $('kSubir'); boton.disabled = true;
+    // Grupos de fincas de hasta ~1.2 MB por llamada.
+    var lotesEnvio = [], actual = [], peso = 0;
+    Object.keys(c.grupos).sort().forEach(function(cod){
+      var texto = JSON.stringify({ type: 'FeatureCollection', features: c.grupos[cod] });
+      if (actual.length && peso + texto.length > 1200000) { lotesEnvio.push(actual); actual = []; peso = 0; }
+      actual.push({ cod: cod, geojson: texto }); peso += texto.length;
+    });
+    if (actual.length) lotesEnvio.push(actual);
+    var pasos = lotesEnvio.length + 2, hechos = 0, indice = {};
+    $('kAvance').innerHTML = '<div class="progreso"><i id="kBarra"></i></div><p class="guia" id="kTexto">Preparando…</p>';
+    function avance(t){ hechos++; $('kBarra').style.width = Math.round(hechos / pasos * 100) + '%'; $('kTexto').textContent = t; }
+    var nombre = capa.nombre, idCarga;
+    api('capaPreparar', { archivo: nombre, lotes: c.filas.length }).then(function(r){
+      idCarga = r.idCarga; avance('Subiendo las fincas…');
+      var cadena = Promise.resolve();
+      lotesEnvio.forEach(function(grupo, i){
+        cadena = cadena.then(function(){ return api('capaFincas', idCarga, grupo); }).then(function(x){
+          Object.keys(x.ids).forEach(function(k){ indice[k] = x.ids[k]; });
+          avance('Fincas: ' + Object.keys(indice).length + ' de ' + Object.keys(c.grupos).length);
+        });
+      });
+      return cadena;
+    }).then(function(){
+      $('kTexto').textContent = 'Escribiendo la tabla de lotes…';
+      return api('capaTerminar', idCarga, { filas: c.filas, indice: indice, archivo: nombre });
+    }).then(function(r){
+      avance(r.mensaje);
+      Local.del('ens_inicio');
+      msg(h(r.mensaje) + (r.sinZona ? '<br>' + r.sinZona + ' fincas sin zona: complételas en Fincas y zonas.' : ''), 'ok', true);
+      setTimeout(function(){ reemplazar(vistaCapa); }, 1200);
+    }).catch(function(e){
+      boton.disabled = false;
+      $('kTexto').textContent = 'No se terminó de subir. La capa anterior sigue en uso; puede intentar de nuevo.';
+      fallo(e);
+    });
+  }
 }
 
 function vistaFincas(){
@@ -2553,11 +2706,12 @@ function vistaCortes(){
   var cuerpo = armazon('Programa de corte', 'Configuración');
   cuerpo.innerHTML = '<p class="guia">Suba el programa que entrega cosecha (Excel o CSV). Las tareas y los avisos de cosecha salen de aquí: ' +
     'si cambian las fechas, las tareas se mueven solas.</p>' +
-    '<label>Archivo</label><input type="file" id="cArch" accept=".csv,.xlsx,.xls,.txt">' +
-    '<div class="acciones"><button class="sec" id="cLeer">Leer archivo</button></div><div id="cMapeo"></div>' +
+    zonaArchivo('cArch', 'Suelte aquí el programa de corte (Excel o CSV)', '.csv,.xlsx,.xls,.txt') +
+    '<div id="cMapeo"></div>' +
     '<div id="cLista"><div class="cargando">Cargando programa vigente…</div></div>';
   var archivo = null;
-  $('cLeer').onclick = function(){
+  $('cArch').onchange = function(){
+    if (!this.files.length) return;
     leerArchivo($('cArch'), 15).then(function(f){
       archivo = f; msg('Leyendo…', 'info');
       return api('importarCortes', { nombre: f.nombre, base64: f.base64, campos: null });
@@ -2596,6 +2750,435 @@ function vistaCortes(){
   }
   lista();
 }
+</script>
+<script>
+/* ===================================================================
+ * GEOMETRÍA EN EL NAVEGADOR
+ * Las funciones de abajo son copia exacta de las de Code.gs (sección 3),
+ * así el área de un lote calculada aquí es la misma que calcularía el
+ * servidor. Se generan con gen_geo.py: si cambian allá, se regeneran.
+ * =================================================================== */
+var Geo = (function(){
+  var CFG = { ELIPSOIDE: { a: 6378137.0, f: 1 / 298.257223563 } };
+
+var CRS_PREDEF = {
+  WGS84:  null,
+  UTM15N: { lon0: -93, lat0: 0, k0: 0.9996, fe: 500000, fn: 0 },
+  UTM16N: { lon0: -87, lat0: 0, k0: 0.9996, fe: 500000, fn: 0 },
+  GTM:    { lon0: -90.5, lat0: 0, k0: 0.9998, fe: 500000, fn: 0 }
+};
+
+function leerSHP_(bytes) {
+  var dv = new DataView(new Uint8Array(bytes).buffer);
+  var largoTotal = dv.getInt32(24, false) * 2;   // en bytes
+  var pos = 100, salida = [];
+
+  while (pos + 8 <= largoTotal) {
+    var largoContenido = dv.getInt32(pos + 4, false) * 2;
+    var ini = pos + 8;
+    var tipo = dv.getInt32(ini, true);
+
+    if (tipo === 5 || tipo === 15 || tipo === 25) {   // Polygon / PolygonZ / PolygonM
+      var nPartes = dv.getInt32(ini + 36, true);
+      var nPuntos = dv.getInt32(ini + 40, true);
+      var offPartes = ini + 44;
+      var offPuntos = offPartes + nPartes * 4;
+      var partes = [];
+      for (var i = 0; i < nPartes; i++) partes.push(dv.getInt32(offPartes + i * 4, true));
+      partes.push(nPuntos);
+
+      var anillos = [];
+      for (var p = 0; p < nPartes; p++) {
+        var anillo = [];
+        for (var k = partes[p]; k < partes[p + 1]; k++) {
+          anillo.push([dv.getFloat64(offPuntos + k * 16, true),
+                       dv.getFloat64(offPuntos + k * 16 + 8, true)]);
+        }
+        anillos.push(anillo);
+      }
+      salida.push(anillos);
+    } else {
+      salida.push(null);   // nulo o tipo no soportado: se conserva la posición
+    }
+    pos = ini + largoContenido;
+  }
+  return salida;
+}
+
+function decodificarTexto_(u8, ini, fin, codificacion) {
+  var latin = /1252|LATIN|8859|ANSI/.test(codificacion || '');
+  if (!latin) {
+    var out = '', i = ini, ok = true;
+    while (i < fin) {
+      var b = u8[i];
+      if (b === 0) break;
+      if (b < 0x80) { out += String.fromCharCode(b); i++; continue; }
+      var n = b >= 0xF0 ? 3 : b >= 0xE0 ? 2 : b >= 0xC0 ? 1 : -1;
+      if (n < 0 || i + n >= fin + 1) { ok = false; break; }
+      var cp = b & (0x3F >> n);
+      for (var k = 1; k <= n; k++) {
+        var c = u8[i + k];
+        if ((c & 0xC0) !== 0x80) { ok = false; break; }
+        cp = (cp << 6) | (c & 0x3F);
+      }
+      if (!ok) break;
+      out += cp > 0xFFFF
+        ? String.fromCharCode(0xD800 + ((cp - 0x10000) >> 10), 0xDC00 + ((cp - 0x10000) & 0x3FF))
+        : String.fromCharCode(cp);
+      i += n + 1;
+    }
+    if (ok) return out;
+  }
+  var s = '';
+  for (var j = ini; j < fin && u8[j] !== 0; j++) s += String.fromCharCode(u8[j]);
+  return s;
+}
+
+function leerDBF_(bytes, codificacion) {
+  var u8 = new Uint8Array(bytes);
+  var dv = new DataView(u8.buffer);
+  var nRegistros = dv.getInt32(4, true);
+  var largoEncabezado = dv.getInt16(8, true);
+  var largoRegistro = dv.getInt16(10, true);
+
+  var campos = [], pos = 32;
+  while (u8[pos] !== 0x0D && pos < largoEncabezado) {
+    var nombre = decodificarTexto_(u8, pos, pos + 11, codificacion);
+    campos.push({ nombre: nombre.trim(), tipo: String.fromCharCode(u8[pos + 11]), largo: u8[pos + 16] });
+    pos += 32;
+  }
+
+  var registros = [];
+  for (var r = 0; r < nRegistros; r++) {
+    var base = largoEncabezado + r * largoRegistro;
+    if (base + largoRegistro > u8.length) break;
+    if (u8[base] === 0x2A) { registros.push({}); continue; }   // borrado
+    var off = base + 1, obj = {};
+    campos.forEach(function (c) {
+      var s = decodificarTexto_(u8, off, off + c.largo, codificacion).trim();
+      if (c.tipo === 'N' || c.tipo === 'F') obj[c.nombre] = s === '' ? '' : Number(s);
+      else if (c.tipo === 'L') obj[c.nombre] = /^[YyTt]$/.test(s);
+      else obj[c.nombre] = s;
+      off += c.largo;
+    });
+    registros.push(obj);
+  }
+  return registros;
+}
+
+function parseGeoJSON_(texto) {
+  var g = JSON.parse(texto);
+  var lista = (g.type === 'FeatureCollection') ? g.features
+            : (g.type === 'Feature') ? [g]
+            : [{ type: 'Feature', properties: {}, geometry: g }];
+  var out = [];
+  lista.forEach(function (f) {
+    var polys = polysDeGeometria_(f.geometry);
+    if (polys.length) out.push({ props: f.properties || {}, polys: polys, rings: polys[0] });
+  });
+  return out;
+}
+
+function resolverCRS_(forzado, prjTexto, features) {
+  if (forzado && forzado !== 'AUTO') return CRS_PREDEF[forzado] !== undefined ? CRS_PREDEF[forzado] : null;
+  if (prjTexto) {
+    var p = leerPRJ_(prjTexto);
+    if (p !== undefined) return p;
+  }
+  // Autodetección por magnitud: si |x| > 180 no puede ser grados decimales
+  var c = primerPunto_(features);
+  if (Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90) {
+    throw new Error('Las coordenadas no están en grados y el archivo no trae .prj. ' +
+                    'Seleccione el sistema de coordenadas (UTM 15N, UTM 16N o GTM) en el diálogo.');
+  }
+  return null;   // ya está en WGS84
+}
+
+function leerPRJ_(txt) {
+  if (/GEOGCS/i.test(txt) && !/PROJCS/i.test(txt)) return null;    // geográfico
+  if (!/Transverse_Mercator/i.test(txt)) return undefined;          // no soportado -> pedir al usuario
+  function par(n, def) {
+    var m = new RegExp('PARAMETER\\s*\\[\\s*"' + n + '"\\s*,\\s*(-?[\\d.]+)', 'i').exec(txt);
+    return m ? parseFloat(m[1]) : def;
+  }
+  return {
+    lon0: par('central_meridian', par('Central_Meridian', 0)),
+    lat0: par('latitude_of_origin', 0),
+    k0:   par('scale_factor', 0.9996),
+    fe:   par('false_easting', 500000),
+    fn:   par('false_northing', 0)
+  };
+}
+
+function reproyectar_(features, crs) {
+  if (!crs) return;
+  features.forEach(function (f) {
+    f.polys = f.polys.map(function (poly) {
+      return poly.map(function (anillo) {
+        return anillo.map(function (c) { return invTM_(c[0], c[1], crs); });
+      });
+    });
+    f.rings = f.polys[0];
+  });
+}
+
+function invTM_(x, y, p) {
+  var a = CFG.ELIPSOIDE.a, f = CFG.ELIPSOIDE.f;
+  var e2 = 2 * f - f * f, ep2 = e2 / (1 - e2);
+  var X = x - p.fe, Y = y - p.fn;
+
+  function arcoMeridiano(lat) {
+    return a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * Math.pow(e2, 3) / 256) * lat
+      - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * Math.pow(e2, 3) / 1024) * Math.sin(2 * lat)
+      + (15 * e2 * e2 / 256 + 45 * Math.pow(e2, 3) / 1024) * Math.sin(4 * lat)
+      - (35 * Math.pow(e2, 3) / 3072) * Math.sin(6 * lat));
+  }
+
+  var M = arcoMeridiano(p.lat0 * Math.PI / 180) + Y / p.k0;
+  var mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * Math.pow(e2, 3) / 256));
+  var e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  var phi1 = mu
+    + (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32) * Math.sin(2 * mu)
+    + (21 * e1 * e1 / 16 - 55 * Math.pow(e1, 4) / 32) * Math.sin(4 * mu)
+    + (151 * Math.pow(e1, 3) / 96) * Math.sin(6 * mu)
+    + (1097 * Math.pow(e1, 4) / 512) * Math.sin(8 * mu);
+
+  var s = Math.sin(phi1), c = Math.cos(phi1), t = Math.tan(phi1);
+  var C1 = ep2 * c * c, T1 = t * t;
+  var N1 = a / Math.sqrt(1 - e2 * s * s);
+  var R1 = a * (1 - e2) / Math.pow(1 - e2 * s * s, 1.5);
+  var D = X / (N1 * p.k0);
+
+  var lat = phi1 - (N1 * t / R1) * (D * D / 2
+    - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * Math.pow(D, 4) / 24
+    + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * Math.pow(D, 6) / 720);
+
+  var lon = p.lon0 * Math.PI / 180 + (D
+    - (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6
+    + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * Math.pow(D, 5) / 120) / c;
+
+  return [lon * 180 / Math.PI, lat * 180 / Math.PI];
+}
+
+function validarCoordenadas_(features) {
+  var c = primerPunto_(features);
+  if (Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90) {
+    throw new Error('Coordenadas fuera de rango tras la reproyección. Verifique el sistema seleccionado.');
+  }
+}
+
+function firmaAnillo_(r) {
+  var s = 0;
+  for (var i = 0, n = r.length; i < n; i++) {
+    var a = r[i], b = r[(i + 1) % n];
+    s += a[0] * b[1] - b[0] * a[1];
+  }
+  return s / 2;
+}
+
+function dentroDe_(pt, r) {
+  var x = pt[0], y = pt[1], dentro = false;
+  for (var i = 0, j = r.length - 1; i < r.length; j = i++) {
+    var xi = r[i][0], yi = r[i][1], xj = r[j][0], yj = r[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 1e-30) + xi)) dentro = !dentro;
+  }
+  return dentro;
+}
+
+function agruparAnillos_(anillos) {
+  var contornos = [], huecos = [];
+  anillos.forEach(function (r) {
+    if (!r || r.length < 4) return;
+    (firmaAnillo_(r) < 0 ? contornos : huecos).push(r);
+  });
+  if (!contornos.length) {          // datos sin orientación correcta: todo es contorno
+    contornos = huecos; huecos = [];
+  }
+  var polys = contornos.map(function (c) { return [c]; });
+  huecos.forEach(function (h) {
+    for (var i = 0; i < contornos.length; i++) {
+      if (dentroDe_(h[0], contornos[i])) { polys[i].push(h); return; }
+    }
+    polys.push([h]);                // hueco huérfano: se conserva como pieza
+  });
+  return polys;
+}
+
+function polysDeGeometria_(geo) {
+  if (!geo) return [];
+  if (geo.type === 'Polygon') return [geo.coordinates];
+  if (geo.type === 'MultiPolygon') return geo.coordinates;
+  return [];
+}
+
+function geometriaDe_(polys) {
+  return polys.length === 1 ? { type: 'Polygon', coordinates: polys[0] }
+                            : { type: 'MultiPolygon', coordinates: polys };
+}
+
+function areaMulti_(polys) {
+  var t = 0;
+  (polys || []).forEach(function (p) { t += areaGeodesica_(p); });
+  return t;
+}
+
+function centroideMulti_(polys) {
+  var mayor = null, max = -1;
+  (polys || []).forEach(function (p) {
+    var a = Math.abs(firmaAnillo_(p[0]));
+    if (a > max) { max = a; mayor = p; }
+  });
+  return mayor ? centroide_(mayor) : [0, 0];
+}
+
+function redondearPolys_(polys, dec) {
+  var f = Math.pow(10, dec || 7);
+  return polys.map(function (p) {
+    return p.map(function (r) {
+      return r.map(function (c) { return [Math.round(c[0] * f) / f, Math.round(c[1] * f) / f]; });
+    });
+  });
+}
+
+function primerPunto_(features) {
+  for (var i = 0; i < features.length; i++) {
+    var p = features[i].polys;
+    if (p && p[0] && p[0][0] && p[0][0][0]) return p[0][0][0];
+  }
+  throw new Error('El archivo no trae coordenadas legibles.');
+}
+
+function areaGeodesica_(anillos) {
+  if (!anillos || !anillos.length) return 0;
+  var c = centroide_(anillos);
+  var total = 0;
+  for (var r = 0; r < anillos.length; r++) {
+    var a = Math.abs(areaAnillo_(anillos[r], c[0], c[1]));
+    total += (r === 0) ? a : -a;
+  }
+  return total;
+}
+
+function areaAnillo_(pts, lon0, lat0) {
+  if (!pts || pts.length < 3) return 0;
+  var rad = Math.PI / 180, a = CFG.ELIPSOIDE.a, f = CFG.ELIPSOIDE.f, e2 = 2 * f - f * f;
+  var s = Math.sin(lat0 * rad), q = 1 - e2 * s * s;
+  var N = a / Math.sqrt(q);                 // radio de curvatura en el primer vertical
+  var M = a * (1 - e2) / Math.pow(q, 1.5);  // radio de curvatura meridiano
+  var kx = N * Math.cos(lat0 * rad) * rad, ky = M * rad;
+
+  var suma = 0;
+  for (var i = 0; i < pts.length; i++) {
+    var p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+    var x1 = (p1[0] - lon0) * kx, y1 = (p1[1] - lat0) * ky;
+    var x2 = (p2[0] - lon0) * kx, y2 = (p2[1] - lat0) * ky;
+    suma += x1 * y2 - x2 * y1;
+  }
+  return suma / 2;
+}
+
+function centroide_(anillos) {
+  var pts = anillos[0];
+  if (!pts || !pts.length) return [0, 0];
+  var A = 0, cx = 0, cy = 0;
+  for (var i = 0; i < pts.length; i++) {
+    var p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+    var cr = p1[0] * p2[1] - p2[0] * p1[1];
+    A += cr; cx += (p1[0] + p2[0]) * cr; cy += (p1[1] + p2[1]) * cr;
+  }
+  if (Math.abs(A) < 1e-14) {
+    var sx = 0, sy = 0;
+    pts.forEach(function (p) { sx += p[0]; sy += p[1]; });
+    return [sx / pts.length, sy / pts.length];
+  }
+  A *= 0.5;
+  return [cx / (6 * A), cy / (6 * A)];
+}
+
+
+  /* --------- lectura de .zip con el descompresor del propio navegador --------- */
+  function inflar(datos){
+    if (typeof DecompressionStream === 'undefined') {
+      return Promise.reject(new Error('Este navegador no abre archivos .zip. Use Chrome o Edge actualizados, o suba el GeoJSON.'));
+    }
+    var flujo = new Blob([datos]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(flujo).arrayBuffer().then(function(b){ return new Uint8Array(b); });
+  }
+  function abrirZip(buffer){
+    var u8 = new Uint8Array(buffer), dv = new DataView(buffer);
+    var fin = -1;
+    for (var i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { fin = i; break; }
+    }
+    if (fin < 0) return Promise.reject(new Error('El archivo .zip está dañado o no es un zip.'));
+    var n = dv.getUint16(fin + 10, true), pos = dv.getUint32(fin + 16, true), entradas = [];
+    for (var k = 0; k < n; k++) {
+      if (dv.getUint32(pos, true) !== 0x02014b50) break;
+      var metodo = dv.getUint16(pos + 10, true), comp = dv.getUint32(pos + 20, true);
+      var largoNombre = dv.getUint16(pos + 28, true), largoExtra = dv.getUint16(pos + 30, true), largoCom = dv.getUint16(pos + 32, true);
+      var local = dv.getUint32(pos + 42, true);
+      var nombre = new TextDecoder('utf-8').decode(u8.subarray(pos + 46, pos + 46 + largoNombre));
+      var ini = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
+      entradas.push({ nombre: nombre, metodo: metodo, datos: u8.subarray(ini, ini + comp) });
+      pos += 46 + largoNombre + largoExtra + largoCom;
+    }
+    return Promise.all(entradas.map(function(e){
+      if (/\/$/.test(e.nombre) || /__macosx/i.test(e.nombre)) return null;
+      if (e.metodo === 0) return { nombre: e.nombre, bytes: e.datos };
+      if (e.metodo === 8) return inflar(e.datos).then(function(b){ return { nombre: e.nombre, bytes: b }; });
+      return null;
+    })).then(function(l){ return l.filter(Boolean); });
+  }
+
+  /** Arma {features, prj} a partir de los archivos del shapefile. */
+  function desdeShapefile(archivos){
+    var buscar = function(ext){ return archivos.filter(function(a){ return new RegExp('\\.' + ext + '$', 'i').test(a.nombre); })[0]; };
+    var shp = buscar('shp'), dbf = buscar('dbf'), prj = buscar('prj'), cpg = buscar('cpg');
+    if (!shp) throw new Error('No viene el archivo .shp.');
+    if (!dbf) throw new Error('Falta el archivo .dbf con los atributos (código de lote, finca…).');
+    var texto = function(a){ return new TextDecoder('utf-8').decode(a.bytes); };
+    var codif = cpg ? texto(cpg).trim().toUpperCase() : '';
+    var geoms = leerSHP_(shp.bytes), attrs = leerDBF_(dbf.bytes, codif), features = [];
+    geoms.forEach(function(g, i){
+      if (!g || !g.length) return;
+      var polys = agruparAnillos_(g);
+      if (polys.length) features.push({ props: attrs[i] || {}, polys: polys, rings: polys[0] });
+    });
+    return { features: features, prj: prj ? texto(prj) : null };
+  }
+
+  /**
+   * Lee lo que el usuario soltó: un .zip con el shapefile, los archivos
+   * sueltos (.shp, .dbf, .prj) o un .geojson. Devuelve features en WGS84.
+   */
+  function leer(lista, crsForzado){
+    var archivos = [].slice.call(lista || []);
+    if (!archivos.length) return Promise.reject(new Error('Suelte o elija un archivo.'));
+    var bytesDe = function(f){ return f.arrayBuffer ? f.arrayBuffer() : new Response(f).arrayBuffer(); };
+    var nombre = archivos.map(function(f){ return f.name; }).join(', ');
+    var json = archivos.filter(function(f){ return /\.(geo)?json$/i.test(f.name); })[0];
+    var zip = archivos.filter(function(f){ return /\.zip$/i.test(f.name); })[0];
+    var paso;
+    if (json) paso = (json.text ? json.text() : new Response(json).text()).then(function(t){ return { features: parseGeoJSON_(t), prj: null }; });
+    else if (zip) paso = bytesDe(zip).then(abrirZip).then(desdeShapefile);
+    else if (archivos.some(function(f){ return /\.shp$/i.test(f.name); })) {
+      paso = Promise.all(archivos.map(function(f){ return bytesDe(f).then(function(b){ return { nombre: f.name, bytes: new Uint8Array(b) }; }); }))
+        .then(desdeShapefile);
+    } else return Promise.reject(new Error('Use un .zip con el shapefile, los archivos .shp + .dbf + .prj, o un .geojson.'));
+    return paso.then(function(r){
+      if (!r.features.length) throw new Error('El archivo no trae polígonos legibles.');
+      var crs = resolverCRS_(crsForzado || 'AUTO', r.prj, r.features);
+      reproyectar_(r.features, crs);
+      validarCoordenadas_(r.features);
+      var campos = {};
+      r.features.slice(0, 50).forEach(function(f){ Object.keys(f.props || {}).forEach(function(k){ campos[k] = true; }); });
+      return { nombre: nombre, features: r.features, campos: Object.keys(campos), proyeccion: crs ? 'Transversa de Mercator (convertida a grados)' : 'Grados WGS84' };
+    });
+  }
+
+  return { leer: leer, areaMulti: areaMulti_, centroideMulti: centroideMulti_, geometriaDe: geometriaDe_,
+           redondearPolys: redondearPolys_ };
+})();
 </script>
 <script>
 arrancar();
