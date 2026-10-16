@@ -133,6 +133,70 @@
   .barraFija button{flex:1;padding:14px;font-weight:600}
   .barraFija button.sec{flex:0 0 auto;font-weight:400;padding:14px 16px}
 
+  .oculto{display:none}
+  fieldset{border:1px solid var(--linea);border-radius:var(--radio);padding:4px 16px 16px;
+    margin:16px 0 0;background:#fff}
+  legend{font-size:11px;color:var(--tenue);padding:0 8px;text-transform:uppercase;
+    letter-spacing:.6px;font-weight:700}
+  .estado{background:#fff;border:1px solid var(--linea);border-left:4px solid var(--tenue);
+    border-radius:8px;padding:13px 15px;margin-bottom:16px}
+  .estado.ok{border-left-color:var(--verde)}
+  .estado b{display:block;font-size:14px;color:var(--ink)}
+  .estado span{font-size:12.5px;color:var(--tenue)}
+
+
+  /* ---------- formulario de ensayo ---------- */
+  .buscador{position:relative}
+  .sugerencias{position:absolute;left:0;right:0;top:100%;z-index:40;background:#fff;
+    border:1px solid var(--linea);border-radius:0 0 8px 8px;box-shadow:0 6px 20px rgba(0,0,0,.1);
+    max-height:280px;overflow:auto}
+  .sug{display:block;width:100%;text-align:left;background:#fff;border:0;
+    border-bottom:1px solid var(--linea);padding:10px 13px;color:var(--ink);border-radius:0}
+  .sug:hover{background:var(--verde-tenue)}
+  .sug b{font:600 13px ui-monospace,Menlo,Consolas,monospace;margin-right:8px}
+  .sug span{font-size:13px}
+  .sug em{display:block;font-style:normal;font-size:11.5px;color:var(--tenue);margin-top:2px}
+  .sug.vacia{padding:12px 13px;color:var(--tenue);font-size:13px}
+
+  .lotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:12px}
+  .lote{background:#fff;border:1px solid var(--linea);border-left:4px solid var(--verde);
+    border-radius:var(--radio);padding:12px 14px;box-shadow:var(--sombra)}
+  .lote.testigo{border-left-color:var(--lima)}
+  .lote .cab{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .lote .cab b{font:700 15px ui-monospace,Menlo,Consolas,monospace;flex:1}
+  .lote .cab .rol{width:auto;padding:5px 8px;font-size:12px;border-radius:6px}
+  .lote .datos{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px}
+  .lote .datos span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--tenue)}
+  .lote .datos b{font-size:12.5px;color:var(--ink);font-weight:600}
+  .resumen{margin-top:12px;font-size:13px;color:var(--texto)}
+  .resumen b{color:var(--verde)}
+  .resumen .ojo{display:block;margin-top:5px;color:var(--acento);font-size:12.5px}
+
+  .advertencia{background:#FFF8E1;border-left:3px solid var(--acento);padding:11px 13px;
+    border-radius:0 6px 6px 0;font-size:13px;color:var(--texto);margin:12px 0 0;line-height:1.5}
+
+  table.rejilla-trat{width:100%;border-collapse:collapse;margin-top:8px}
+  table.rejilla-trat th{font-size:10.5px;color:var(--tenue);text-align:left;font-weight:600;
+    padding:0 5px 5px;text-transform:uppercase;letter-spacing:.5px}
+  table.rejilla-trat td{padding:0 5px 6px}
+  table.rejilla-trat input{padding:8px 9px;font-size:13px}
+  .quitar{background:none;border:0;color:var(--error);cursor:pointer;font-size:19px;
+    line-height:1;padding:0 5px}
+  .quitar:hover{background:none}
+
+  .actividades{display:flex;flex-direction:column;gap:7px}
+  .act{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--linea);
+    border-radius:8px;padding:9px 12px;text-transform:none;letter-spacing:0;font-weight:400;
+    font-size:14px;color:var(--texto);margin:0}
+  .act input[type=checkbox]{width:auto;flex:0 0 auto}
+  .act span{flex:1}
+  .act .dias,.act .veces{width:84px;flex:0 0 auto;padding:7px 9px;font-size:13px}
+  .campos{flex-wrap:wrap}
+  .campos>div{min-width:180px}
+  .ayuda{display:block;font-size:11.5px;color:var(--tenue);margin-top:3px}
+
+
   /* ---------- espacio de trabajo del departamento ---------- */
   .contenido{padding:16px;max-width:1040px;margin:0 auto}
   .regreso{padding:12px 16px 0;max-width:1040px;margin:0 auto}
@@ -592,120 +656,290 @@ function vistaPanel(){
   });
 }
 
-/* ======================== NUEVO ENSAYO ======================== */
+/* ===================================================================
+ * NUEVO ENSAYO
+ * El lote manda: al elegirlo se llenan finca, zona, variedad, área,
+ * riego y textura. Los campos propios de cada departamento los dibuja
+ * el catálogo, no están escritos aquí.
+ * =================================================================== */
+var NE = { lotes: [], form: null, variables: [] };
+
 function vistaEnsayo(){
+  var dep = D.linea ? D.linea.id : (SESION && SESION.departamentos[0] ? SESION.departamentos[0].id : '');
+  NE.lotes = []; NE.form = null;
+  app.className = '';
   app.innerHTML =
-  '<h1>Nuevo ensayo</h1>' +
-  '<p class="guia">Al guardar se crean la ficha, los tratamientos, las parcelas ya aleatorizadas, ' +
-  'la carpeta en Drive y el cronograma de avisos.</p>' +
+  encabezadoDep('Nuevo ensayo', (D.linea && D.linea.nombre) || '') +
+  '<div class="contenido">' +
+    '<section class="grupo"><h2>Identificación</h2>' +
+      '<div class="fila">' +
+        '<div style="flex:2"><label>Nombre del ensayo</label><input id="nombre"></div>' +
+        '<div><label>Tipo de ensayo</label><select id="tipo"></select></div>' +
+      '</div>' +
+      '<label>Objetivo</label><textarea id="objetivo"></textarea>' +
+    '</section>' +
 
-  '<fieldset><legend>Identificación</legend>' +
-    '<div class="fila">' +
-      '<div><label>ID (opcional)</label><input id="id" placeholder="Se genera solo"></div>' +
-      '<div style="flex:2"><label>Nombre del ensayo</label><input id="nombre"></div></div>' +
-    '<div class="fila">' +
-      '<div><label>Cultivo</label><input id="cultivo"></div>' +
-      '<div><label>Finca</label><input id="finca"></div>' +
-      '<div><label>Lote</label><input id="lote"></div></div>' +
-    '<div class="fila">' +
-      '<div><label>Municipio</label><input id="municipio"></div>' +
-      '<div><label>Responsable</label><input id="responsable"></div>' +
-      '<div><label>Correo del responsable</label><input id="emailResponsable" type="email"></div></div>' +
-    '<label>Objetivo</label><textarea id="objetivo"></textarea>' +
-    '<label>Hipótesis</label><textarea id="hipotesis"></textarea>' +
-  '</fieldset>' +
+    '<section class="grupo"><h2>Lotes</h2>' +
+      '<p class="guia">Escriba el código, el nombre del sector o la finca. Al agregarlo se llenan ' +
+      'solos la finca, la zona, la variedad y el área.</p>' +
+      '<div class="buscador">' +
+        '<input id="buscaLote" placeholder="Ej.: 0230108, Pivote 2, Canoas…" autocomplete="off">' +
+        '<div id="sugerencias" class="sugerencias"></div>' +
+      '</div>' +
+      '<div id="lotesElegidos" class="lotes"></div>' +
+      '<div id="resumenLotes" class="resumen"></div>' +
+    '</section>' +
 
-  '<fieldset><legend>Diseño</legend>' +
-    '<div class="fila">' +
-      '<div><label>Diseño experimental</label><select id="diseno">' +
-        ['DBCA','DCA','CUADRADO_LATINO','FACTORIAL_DBCA','PARCELA_DIVIDIDA','FRANJAS']
-          .map(function(d){ return '<option>' + d + '</option>'; }).join('') +
-      '</select></div>' +
-      '<div><label>Repeticiones</label><input id="repeticiones" type="number" value="4" min="2"></div>' +
-      '<div><label>Área por parcela (m²)</label><input id="areaParcela" type="number" step="0.01"></div></div>' +
-    '<div class="fila">' +
-      '<div><label>Fecha de establecimiento</label><input id="fechaEstablecimiento" type="date"></div>' +
-      '<div><label>Cosecha estimada</label><input id="fechaCosecha" type="date"></div></div>' +
-    '<label style="margin-top:14px">Tratamientos</label>' +
-    '<table class="rejilla" id="tabTrat"><tr>' +
-      '<th style="width:70px">Código</th><th>Descripción</th><th style="width:120px">Producto</th>' +
-      '<th style="width:70px">Dosis</th><th style="width:70px">Unidad</th><th style="width:24px"></th></tr></table>' +
-    '<button class="sec chico" id="masTrat">Agregar tratamiento</button>' +
-  '</fieldset>' +
+    '<section class="grupo"><h2>Diseño</h2>' +
+      '<div class="fila">' +
+        '<div><label>Arreglo</label><select id="diseno">' +
+          '<option value="BLOQUES">Bloques al azar</option>' +
+          '<option value="FRANJAS">Franjas</option>' +
+          '<option value="LOTES_COMERCIALES">Lotes comerciales</option>' +
+          '<option value="DCA">Completamente al azar</option>' +
+        '</select></div>' +
+        '<div><label>Repeticiones</label><input id="repeticiones" type="number" value="4" min="1"></div>' +
+        '<div><label>Área de parcela (m²)</label><input id="areaParcela" type="number" step="0.01"></div>' +
+      '</div>' +
+      '<div id="avisoDiseno"></div>' +
+      '<label style="margin-top:14px">Tratamientos</label>' +
+      '<table class="rejilla-trat" id="tabTrat"><tr>' +
+        '<th style="width:80px">Código</th><th>Descripción</th><th style="width:140px">Producto</th>' +
+        '<th style="width:90px">Dosis</th><th style="width:34px"></th></tr></table>' +
+      '<button class="sec chico" id="masTrat">Agregar tratamiento</button>' +
+    '</section>' +
 
-  '<fieldset><legend>Muestreo</legend>' +
-    '<label>Método de muestreo</label>' +
-    '<textarea id="metodoMuestreo" placeholder="Ej.: cinco puntos por parcela en el área útil, descartando dos surcos de borde."></textarea>' +
-    '<table class="rejilla" id="tabVar"><tr>' +
-      '<th>Variable</th><th style="width:70px">Unidad</th><th style="width:80px">Inicio (DDE)</th>' +
-      '<th style="width:80px">Cada (días)</th><th style="width:70px">Eventos</th>' +
-      '<th style="width:90px">Submuestras</th><th style="width:24px"></th></tr></table>' +
-    '<button class="sec chico" id="masVar">Agregar variable</button>' +
-  '</fieldset>' +
+    '<section class="grupo"><h2>Fechas y seguimiento</h2>' +
+      '<div class="fila">' +
+        '<div><label>Fecha de aplicación</label><input id="fechaAplicacion" type="date"></div>' +
+        '<div><label>Equipo de aplicación</label><select id="equipo"></select></div>' +
+        '<div><label>¿Llega a cosecha?</label><select id="cosecha">' +
+          '<option value="SI">Sí</option><option value="NO">No</option></select></div>' +
+      '</div>' +
+      '<label style="margin-top:12px">Actividades de seguimiento</label>' +
+      '<p class="guia">Marque las que aplican y defina cada cuántos días después de la aplicación.</p>' +
+      '<div id="actividades" class="actividades"></div>' +
+    '</section>' +
 
-  '<fieldset><legend>Manejo y cosecha</legend>' +
-    '<label>Manejo agronómico</label><textarea id="manejo"></textarea>' +
-    '<label>Criterios de cosecha</label><textarea id="criteriosCosecha"></textarea>' +
-  '</fieldset>' +
+    '<section class="grupo" id="seccionCampos"></section>' +
 
-  '<div class="acciones"><button id="guardar">Crear ensayo</button></div>' +
-  '<div id="msg" class="msg"></div>';
+    '<section class="grupo"><h2>Responsable</h2>' +
+      '<div class="fila">' +
+        '<div><label>Nombre</label><input id="responsable" value="' +
+          ((SESION && SESION.nombre) || '') + '"></div>' +
+        '<div><label>Correo para los avisos</label><input id="email" type="email"></div>' +
+      '</div>' +
+    '</section>' +
+
+    '<div class="acciones"><button id="crear">Crear ensayo</button>' +
+    '<button class="sec" id="cancelar">Cancelar</button></div>' +
+  '</div><div id="msg" class="msg"></div>';
+
+  cablearEncabezado(function(){ abrirDepartamento(dep); });
+  $('cancelar').onclick = function(){ abrirDepartamento(dep); };
+  $('fechaAplicacion').valueAsDate = new Date();
+
+  filaTrat('T1'); filaTrat('T2');
+  $('masTrat').onclick = function(){ filaTrat(''); };
+  $('diseno').onchange = avisoDiseno;
+  avisoDiseno();
+  cablearBuscador();
+
+  llamar('formularioEnsayo', [tokenGuardado(), dep, ''], function(f){
+    NE.form = f;
+    $('tipo').innerHTML = f.tipos.map(function(t){ return '<option>' + t + '</option>'; }).join('')
+      || '<option value="">sin tipos en el catálogo</option>';
+    $('equipo').innerHTML = f.equipos.map(function(e){ return '<option>' + e + '</option>'; }).join('')
+      || '<option value="">sin equipos en el catálogo</option>';
+    $('actividades').innerHTML = f.actividades.map(function(a, i){
+      var esCosechaFinal = /^\s*cosecha\s*$/i.test(a);
+      var predet = /biometr|precosecha|cosecha/i.test(a);
+      return '<label class="act"><input type="checkbox" value="' + a + '"' +
+        (predet ? ' checked' : '') + '>' +
+        '<span>' + a + '</span>' +
+        '<input class="dias" type="number" placeholder="días" value="' +
+          (esCosechaFinal ? '' : (30 + i * 30)) + '"' +
+          (esCosechaFinal ? ' disabled title="La cosecha la fija el programa de corte"' : '') + '>' +
+        '<input class="veces" type="number" placeholder="veces" value="' +
+          (esCosechaFinal ? '1' : '3') + '"></label>';
+    }).join('') || '<p class="vacio">Agregue actividades al catálogo del departamento.</p>';
+    $('tipo').onchange = cargarCampos;
+    cargarCampos();
+  });
+
+  function cargarCampos(){
+    llamar('formularioEnsayo', [tokenGuardado(), dep, val('tipo')], function(f){
+      NE.form = f;
+      $('seccionCampos').innerHTML = f.secciones.length
+        ? f.secciones.map(function(s){
+            return '<h2>' + s.seccion + '</h2><div class="fila campos">' +
+              s.campos.map(campoHTML).join('') + '</div>';
+          }).join('')
+        : '';
+    });
+  }
+
+  function campoHTML(c){
+    var etiqueta = c.etiqueta + (c.unidad ? ' (' + c.unidad + ')' : '') + (c.obligatorio ? ' *' : '');
+    var base = ' id="c_' + c.campo + '" data-campo="' + c.campo + '"';
+    var control;
+    if (c.tipo === 'lista') {
+      control = '<select' + base + '><option value=""></option>' +
+        c.opciones.map(function(o){ return '<option>' + o + '</option>'; }).join('') + '</select>';
+    } else if (c.tipo === 'nota') {
+      control = '<textarea' + base + '></textarea>';
+    } else if (c.tipo === 'si_no') {
+      control = '<select' + base + '><option value=""></option><option>SI</option><option>NO</option></select>';
+    } else {
+      var t = (c.tipo === 'numero' || c.tipo === 'entero') ? 'number'
+            : c.tipo === 'fecha' ? 'date' : 'text';
+      control = '<input type="' + t + '"' + (t === 'number' ? ' step="any"' : '') + base + '>';
+    }
+    return '<div><label for="c_' + c.campo + '">' + etiqueta + '</label>' + control +
+           (c.ayuda ? '<span class="ayuda">' + c.ayuda + '</span>' : '') + '</div>';
+  }
+
+  function avisoDiseno(){
+    var d = val('diseno');
+    var sinRepeticion = (d === 'LOTES_COMERCIALES' || d === 'FRANJAS');
+    $('repeticiones').disabled = (d === 'LOTES_COMERCIALES');
+    $('avisoDiseno').innerHTML = sinRepeticion
+      ? '<p class="advertencia">En este arreglo los tratamientos no se repiten dentro del lote, ' +
+        'así que no hay error experimental que estimar: el ANOVA no aplica. La comparación ' +
+        'se hace contra un lote testigo, que se agrega abajo marcándolo como testigo.</p>'
+      : '';
+  }
 
   function filaTrat(cod){
     var tr = $('tabTrat').insertRow(-1);
-    tr.innerHTML = '<td><input class="c"></td><td><input class="d"></td><td><input class="p"></td>' +
-      '<td><input class="do"></td><td><input class="u"></td>' +
+    tr.innerHTML = '<td><input class="t_cod"></td><td><input class="t_desc"></td>' +
+      '<td><input class="t_prod"></td><td><input class="t_dosis"></td>' +
       '<td><button class="quitar">×</button></td>';
     tr.querySelector('.quitar').onclick = function(){ tr.remove(); };
-    if (cod) tr.querySelector('.c').value = cod;
+    if (cod) tr.querySelector('.t_cod').value = cod;
   }
-  function filaVar(){
-    var tr = $('tabVar').insertRow(-1);
-    tr.innerHTML = '<td><input class="n"></td><td><input class="u"></td>' +
-      '<td><input class="dde" type="number" value="30"></td>' +
-      '<td><input class="fr" type="number" value="30"></td>' +
-      '<td><input class="ev" type="number" value="3"></td>' +
-      '<td><input class="sub" type="number" value="5"></td>' +
-      '<td><button class="quitar">×</button></td>';
-    tr.querySelector('.quitar').onclick = function(){ tr.remove(); };
-  }
-  $('masTrat').onclick = function(){ filaTrat(); };
-  $('masVar').onclick = function(){ filaVar(); };
-  filaTrat('T1'); filaTrat('T2'); filaTrat('T3'); filaVar();
 
-  $('guardar').onclick = function(){
+  /* ---------------- búsqueda y autocompletado de lotes ---------------- */
+  function cablearBuscador(){
+    var caja = $('buscaLote'), lista = $('sugerencias'), espera;
+    caja.oninput = function(){
+      clearTimeout(espera);
+      var q = caja.value.trim();
+      if (q.length < 2) { lista.innerHTML = ''; return; }
+      espera = setTimeout(function(){
+        llamar('sugerirLotes', [tokenGuardado(), q], function(res){
+          lista.innerHTML = res.length
+            ? res.map(function(l){
+                return '<button class="sug" data-lote="' + l.lote + '">' +
+                  '<b>' + l.lote + '</b>' +
+                  '<span>' + l.finca + ' · ' + l.desc + '</span>' +
+                  '<em>' + l.variedad + ' · ' + l.areaHa + ' ha</em></button>';
+              }).join('')
+            : '<div class="sug vacia">Sin coincidencias</div>';
+          [].forEach.call(lista.querySelectorAll('[data-lote]'), function(b){
+            b.onclick = function(){ agregarLote(b.dataset.lote); };
+          });
+        }, function(){ lista.innerHTML = ''; });
+      }, 220);
+    };
+    caja.onblur = function(){ setTimeout(function(){ lista.innerHTML = ''; }, 180); };
+  }
+
+  function agregarLote(codigo){
+    $('buscaLote').value = ''; $('sugerencias').innerHTML = '';
+    if (NE.lotes.some(function(l){ return l.lote === codigo; })) {
+      return msg('Ese lote ya está en la lista.', 'info');
+    }
+    llamar('buscarLote', [codigo], function(f){
+      if (!f) return msg('No se encontró el lote ' + codigo + '.', 'err');
+      f.rol = NE.lotes.length ? 'TESTIGO' : 'ENSAYO';
+      NE.lotes.push(f);
+      pintarLotes();
+      msg('');
+    });
+  }
+
+  function pintarLotes(){
+    $('lotesElegidos').innerHTML = NE.lotes.map(function(l, i){
+      return '<div class="lote' + (l.rol === 'TESTIGO' ? ' testigo' : '') + '">' +
+        '<div class="cab"><b>' + l.lote + '</b>' +
+          '<select class="rol" data-i="' + i + '">' +
+            '<option value="ENSAYO"' + (l.rol==='ENSAYO'?' selected':'') + '>Ensayo</option>' +
+            '<option value="TESTIGO"' + (l.rol==='TESTIGO'?' selected':'') + '>Testigo</option>' +
+          '</select>' +
+          '<button class="quitar" data-quitar="' + i + '">×</button></div>' +
+        '<div class="datos">' +
+          dato('Finca', l.finca) + dato('Zona', l.zona) +
+          dato('Sector', l.desc + (l.sector ? ' · ' + l.sector : '')) +
+          dato('Variedad', l.variedad) + dato('Área', l.areaHa + ' ha') +
+          dato('Riego', l.riego) + dato('Textura', l.textura) + dato('Corte', l.cosecha) +
+        '</div></div>';
+    }).join('');
+
+    var ha = NE.lotes.reduce(function(s,l){ return s + (Number(l.areaHa)||0); }, 0);
+    var variedades = [];
+    NE.lotes.forEach(function(l){ if (variedades.indexOf(l.variedad) < 0) variedades.push(l.variedad); });
+    $('resumenLotes').innerHTML = NE.lotes.length
+      ? '<b>' + NE.lotes.length + '</b> lotes · <b>' + (Math.round(ha*100)/100) + '</b> ha · ' +
+        variedades.join(', ') +
+        (variedades.length > 1
+          ? '<span class="ojo">Hay más de una variedad: considere si conviene analizarlos juntos.</span>'
+          : '')
+      : '';
+
+    [].forEach.call($('lotesElegidos').querySelectorAll('[data-quitar]'), function(b){
+      b.onclick = function(){ NE.lotes.splice(Number(b.dataset.quitar), 1); pintarLotes(); };
+    });
+    [].forEach.call($('lotesElegidos').querySelectorAll('.rol'), function(sl){
+      sl.onchange = function(){ NE.lotes[Number(sl.dataset.i)].rol = sl.value; pintarLotes(); };
+    });
+  }
+  function dato(k, v){
+    return '<div><span>' + k + '</span><b>' + (v || '—') + '</b></div>';
+  }
+
+  /* ----------------------------- guardar ----------------------------- */
+  $('crear').onclick = function(){
     if (!val('nombre')) return msg('Escriba el nombre del ensayo.', 'err');
-    if (!val('fechaEstablecimiento')) return msg('La fecha de establecimiento define todo el cronograma.', 'err');
+    if (!NE.lotes.length) return msg('Agregue al menos un lote.', 'err');
+    if (!val('fechaAplicacion')) return msg('La fecha de aplicación define todo el cronograma.', 'err');
 
-    var trats = [].slice.call(document.querySelectorAll('#tabTrat tr')).slice(1).map(function(tr){
-      return { codigo: tr.querySelector('.c').value, descripcion: tr.querySelector('.d').value,
-               producto: tr.querySelector('.p').value, dosis: tr.querySelector('.do').value,
-               unidad: tr.querySelector('.u').value };
-    }).filter(function(t){ return t.codigo.trim(); });
-
-    var vars = [].slice.call(document.querySelectorAll('#tabVar tr')).slice(1).map(function(tr){
-      return { nombre: tr.querySelector('.n').value, unidad: tr.querySelector('.u').value,
-               dde: tr.querySelector('.dde').value, frecuencia: tr.querySelector('.fr').value,
-               eventos: tr.querySelector('.ev').value, submuestras: tr.querySelector('.sub').value };
-    }).filter(function(v){ return v.nombre.trim(); });
-
+    var trats = [].slice.call(app.querySelectorAll('#tabTrat tr')).slice(1).map(function(tr){
+      return { codigo: tr.querySelector('.t_cod').value.trim(),
+               descripcion: tr.querySelector('.t_desc').value,
+               producto: tr.querySelector('.t_prod').value,
+               dosis: tr.querySelector('.t_dosis').value };
+    }).filter(function(t){ return t.codigo; });
     if (trats.length < 2) return msg('Registre al menos dos tratamientos.', 'err');
 
-    this.disabled = true;
+    var actividades = [].map.call(app.querySelectorAll('.act input[type=checkbox]:checked'),
+      function(c){
+        var cont = c.closest('.act');
+        return { actividad: c.value,
+                 dias: Number(cont.querySelector('.dias').value) || 0,
+                 veces: Number(cont.querySelector('.veces').value) || 1 };
+      });
+
+    var campos = {};
+    [].forEach.call(app.querySelectorAll('#seccionCampos [data-campo]'), function(i){
+      if (i.value !== '') campos[i.dataset.campo] = i.value;
+    });
+
+    $('crear').disabled = true;
     msg('Creando ensayo, parcelas y cronograma…', 'info');
     llamar('crearEnsayo', [{
-        id: val('id'), nombre: val('nombre'), cultivo: val('cultivo'), objetivo: val('objetivo'),
-        hipotesis: val('hipotesis'), diseno: val('diseno'), repeticiones: val('repeticiones'),
-        areaParcela: val('areaParcela'), finca: val('finca'), lote: val('lote'), municipio: val('municipio'),
-        responsable: val('responsable'), emailResponsable: val('emailResponsable'),
-        fechaEstablecimiento: val('fechaEstablecimiento'), fechaCosecha: val('fechaCosecha'),
-        metodoMuestreo: val('metodoMuestreo'), manejo: val('manejo'),
-        criteriosCosecha: val('criteriosCosecha'), tratamientos: trats, variables: vars
-      }], function(r){
-        msg('Ensayo <b>' + r.id + '</b> creado: ' + r.parcelas + ' parcelas aleatorizadas y ' +
-            r.tareas + ' tareas programadas.<br><a href="' + r.carpeta + '" target="_blank">Abrir carpeta en Drive</a>', 'ok');
-        $('guardar').disabled = false;
-      }, function(e){ msg(e.message, 'err'); $('guardar').disabled = false; });
+      token: tokenGuardado(), departamento: dep, nombre: val('nombre'), tipo: val('tipo'),
+      objetivo: val('objetivo'), diseno: val('diseno'),
+      repeticiones: val('repeticiones'), areaParcela: val('areaParcela'),
+      fechaAplicacion: val('fechaAplicacion'), equipo: val('equipo'),
+      llegaACosecha: val('cosecha'), responsable: val('responsable'), email: val('email'),
+      lotes: NE.lotes.map(function(l){ return { lote: l.lote, rol: l.rol }; }),
+      tratamientos: trats, actividades: actividades, campos: campos
+    }], function(r){
+      msg('Ensayo <b>' + r.id + '</b> creado: ' + r.parcelas + ' parcelas y ' +
+          r.tareas + ' tareas programadas.', 'ok');
+      setTimeout(function(){ abrirDepartamento(dep); }, 1400);
+    }, function(e){ msg(e.message, 'err'); $('crear').disabled = false; });
   };
 }
 
@@ -1069,9 +1303,8 @@ function vistaLinea(){
   grupo('Documentos', [
     { ir:'protocolos', icono:IC.doc, titulo:'Protocolos', nota:'repositorio en PDF' }
   ].concat(admin ? [
-    { ir:'base',     icono:IC.finca, titulo:'Capa de lotes', nota:'shapefile del ingenio' },
-    { ir:'fincas',   icono:IC.finca, titulo:'Fincas',        nota:'nombres y zonas' },
-    { ir:'usuarios', icono:IC.gente, titulo:'Usuarios',      nota:'accesos y permisos' }
+    { ir:'base',     icono:IC.finca, titulo:'Datos base',  nota:'lotes, fincas y cortes' },
+    { ir:'usuarios', icono:IC.gente, titulo:'Usuarios',     nota:'accesos y permisos' }
   ] : [])) +
 
   '<section class="grupo"><h2>Ensayos registrados</h2>' +
@@ -1116,7 +1349,6 @@ function vistaLinea(){
     calidad:     function(){ vistaCalidad(l.id); },
     protocolos:  function(){ irAVista('protocolos'); },
     base:        function(){ irAVista('base'); },
-    fincas:      function(){ vistaFincas(); },
     usuarios:    function(){ vistaUsuarios(); }
   };
   [].forEach.call(app.querySelectorAll('button[data-ir]'), function(b){
@@ -1392,46 +1624,6 @@ function vistaCalidad(idLinea){
   }, function(e){ msg(e.message, 'err'); });
 }
 
-/* ---------------------------- Fincas ---------------------------- */
-function vistaFincas(){
-  app.className = '';
-  app.innerHTML = encabezadoDep('Fincas', 'Nombres y zonas') +
-    '<div class="contenido"><div class="cargando">Cargando…</div></div>' +
-    '<div id="msg" class="msg"></div>';
-  cablearEncabezado(function(){ abrirDepartamento(D.linea ? D.linea.id : null); });
-
-  llamar('apiFincas', [tokenGuardado()], function(r){
-    app.querySelector('.contenido').innerHTML =
-      '<p class="guia">El código de finca son los tres primeros dígitos del lote. ' +
-      'Escriba el nombre una vez y queda para todos sus lotes.</p>' +
-      '<table class="tabla"><tr><th>Código</th><th>Nombre</th><th>Zona</th>' +
-      '<th class="num">Lotes</th><th class="num">Hectáreas</th></tr>' +
-      r.fincas.map(function(f){
-        return '<tr><td class="mono">' + f.cod + '</td>' +
-          '<td><input class="enTabla" data-cod="' + f.cod + '" data-campo="nombre" value="' +
-            (f.nombre||'').replace(/"/g,'&quot;') + '"></td>' +
-          '<td><input class="enTabla chica" data-cod="' + f.cod + '" data-campo="zona" value="' +
-            (f.zona||'') + '"></td>' +
-          '<td class="num">' + f.lotes + '</td><td class="num">' + f.areaHa + '</td></tr>';
-      }).join('') + '</table>' +
-      '<div class="acciones"><button id="guardar">Guardar y aplicar a los lotes</button></div>';
-
-    $('guardar').onclick = function(){
-      var m = {};
-      [].forEach.call(app.querySelectorAll('.enTabla'), function(i){
-        m[i.dataset.cod] = m[i.dataset.cod] || { cod: i.dataset.cod };
-        m[i.dataset.cod][i.dataset.campo] = i.value.trim();
-      });
-      $('guardar').disabled = true;
-      accion('apiGuardarFincas', [tokenGuardado(), Object.keys(m).map(function(k){ return m[k]; })],
-        function(){
-          accion('apiAplicarNombresFinca', [tokenGuardado()]);
-          $('guardar').disabled = false;
-        });
-    };
-  }, function(e){ msg(e.message, 'err'); });
-}
-
 /* --------------------------- Usuarios --------------------------- */
 function vistaUsuarios(){
   app.className = '';
@@ -1520,77 +1712,244 @@ function vistaUsuarios(){
   }
 }
 
-/* ==================== CAPA BASE DEL INGENIO ==================== */
+/* ===================================================================
+ * ADMINISTRACIÓN GENERAL
+ * Capa de lotes y programa de corte: lo que cambia cada zafra.
+ * =================================================================== */
 function vistaBase(){
-  app.innerHTML =
-  '<h1>Capa base del ingenio</h1>' +
-  '<p class="guia">Suba primero el archivo a Drive —la capa completa pesa varios MB y no conviene ' +
-  'pasarla por el navegador— y pegue aquí su ID. El ID es lo que aparece en la URL entre ' +
-  '<code>/d/</code> y <code>/view</code>. Acepta <code>.geojson</code> o <code>.zip</code> con el shapefile.</p>' +
+  app.className = '';
+  app.innerHTML = encabezadoDep('Administración general', 'Datos base del ingenio') +
+    '<div class="contenido"><div class="cargando">Cargando…</div></div>' +
+    '<div id="msg" class="msg"></div>';
+  cablearEncabezado(function(){ abrirDepartamento(D.linea ? D.linea.id : null); });
 
-  (D.lotes > 0
-    ? '<div class="msg ok" style="display:block">Ya hay ' + D.lotes + ' lotes cargados y ' +
-      D.fincas + ' fincas. Volver a importar reemplaza la capa completa y conserva los nombres de finca.</div>'
-    : '') +
+  llamar('apiAdmin', [tokenGuardado()], pintar, function(e){ msg(e.message, 'err'); });
 
-  '<label for="idArchivo">ID del archivo en Drive</label>' +
-  '<input id="idArchivo" placeholder="1a2B3c...">' +
-  '<div class="acciones"><button id="btnLeer" class="sec">Leer archivo</button></div>' +
+  function pintar(r){
+    var b = r.base;
+    app.querySelector('.contenido').innerHTML =
+      '<div class="cifras">' +
+        '<div class="c"><b>' + b.lotes + '</b><span>lotes</span></div>' +
+        '<div class="c"><b>' + b.hectareas + '</b><span>hectáreas</span></div>' +
+        '<div class="c"><b>' + b.fincas + '</b><span>fincas</span></div>' +
+        '<div class="c ' + (b.sinNombre ? 'aviso' : '') + '"><b>' + b.sinNombre +
+          '</b><span>sin nombre</span></div>' +
+        '<div class="c"><b>' + b.cortes + '</b><span>fechas de corte</span></div>' +
+      '</div>' +
 
-  '<fieldset id="mapeo" style="display:none"><legend>Qué campo es cada cosa</legend>' +
-    '<div class="fila">' +
-      '<div><label>Código de lote</label><select id="c_lote"></select></div>' +
-      '<div><label>Descripción</label><select id="c_desc"></select></div>' +
-      '<div><label>Variedad</label><select id="c_variedad"></select></div></div>' +
-    '<div class="fila">' +
-      '<div><label>Área del ingenio</label><select id="c_area"></select></div>' +
-      '<div><label>Distanciamiento</label><select id="c_dist"></select></div>' +
-      '<div><label>Textura</label><select id="c_textura"></select></div></div>' +
-    '<div class="fila">' +
-      '<div><label>Tipo de riego</label><select id="c_riego"></select></div>' +
-      '<div><label>Tipo de cosecha</label><select id="c_cosecha"></select></div>' +
-      '<div><label>Estrato</label><select id="c_estrato"></select></div></div>' +
-    '<p class="guia" style="margin:10px 0 0">El área que usa el módulo es la que se calcula del ' +
-    'polígono. El área del ingenio se guarda aparte, solo para comparar.</p>' +
-    '<div class="acciones"><button id="btnImportar">Importar capa</button></div>' +
-  '</fieldset>' +
-  '<div id="msg" class="msg"></div>';
+      '<div class="pestanas">' +
+        '<button class="p on" data-t="capa">Capa de lotes</button>' +
+        '<button class="p" data-t="fincas">Fincas y zonas</button>' +
+        '<button class="p" data-t="cortes">Programa de corte</button>' +
+      '</div>' +
+      '<div id="t_capa"></div>' +
+      '<div id="t_fincas" class="oculto"></div>' +
+      '<div id="t_cortes" class="oculto"></div>';
 
-  var campos = [];
-  $('btnLeer').onclick = function(){
-    if (!val('idArchivo')) return msg('Pegue el ID del archivo.', 'err');
-    msg('Leyendo la capa…', 'info');
-    llamar('inspeccionarCapaBase', [val('idArchivo')], function(info){
-        campos = info.campos;
-        $('mapeo').style.display = 'block';
-        [['c_lote',/lote|plot|codigo/i,false],['c_desc',/desc|sector|nombre/i,true],
-         ['c_variedad',/varied/i,true],['c_area',/area|área|ha/i,true],
-         ['c_dist',/dist|siemb/i,true],['c_textura',/text/i,true],
-         ['c_riego',/riego/i,true],['c_cosecha',/cosecha/i,true],['c_estrato',/estrat/i,true]]
+    [].forEach.call(app.querySelectorAll('.pestanas .p'), function(bt){
+      bt.onclick = function(){
+        [].forEach.call(app.querySelectorAll('.pestanas .p'), function(x){ x.className='p'; });
+        bt.className = 'p on';
+        ['capa','fincas','cortes'].forEach(function(t){
+          $('t_'+t).className = (t === bt.dataset.t) ? '' : 'oculto';
+        });
+        if (bt.dataset.t === 'cortes' && !$('t_cortes').innerHTML) pestanaCortes();
+      };
+    });
+    pestanaCapa(b);
+    pestanaFincas(r.fincas);
+  }
+
+  /* ------------------------ capa de lotes ------------------------ */
+  function pestanaCapa(b){
+    $('t_capa').innerHTML =
+      '<section class="grupo">' +
+        (b.actualizada
+          ? '<div class="estado ok"><b>Capa cargada</b><span>' + b.lotes + ' lotes · ' +
+            'actualizada el ' + b.actualizada + (b.origen ? ' desde ' + b.origen : '') + '</span></div>'
+          : '<div class="estado"><b>Sin capa cargada</b><span>Suba el GeoJSON o el shapefile ' +
+            'del ingenio para empezar.</span></div>') +
+
+        '<p class="guia">Suba primero el archivo a Drive —la capa completa pesa varios MB— ' +
+        'y pegue aquí el enlace de <b>Compartir</b>. Acepta <code>.geojson</code> o un ' +
+        '<code>.zip</code> con el shapefile. Reemplazar la capa conserva los nombres de finca ' +
+        'y las zonas que ya escribió.</p>' +
+
+        '<label>Enlace o identificador del archivo en Drive</label>' +
+        '<input id="enlaceCapa" placeholder="https://drive.google.com/file/d/…/view">' +
+        '<div class="acciones"><button class="sec" id="leerCapa">Leer archivo</button></div>' +
+
+        '<div id="mapeoCapa"></div>' +
+      '</section>';
+
+    $('leerCapa').onclick = function(){
+      if (!val('enlaceCapa')) return msg('Pegue el enlace del archivo.', 'err');
+      msg('Leyendo la capa…', 'info');
+      llamar('apiInspeccionarCapa', [tokenGuardado(), val('enlaceCapa')], function(info){
+        msg(info.n + ' polígonos en ' + info.archivo + '.', 'ok');
+        $('mapeoCapa').innerHTML =
+          '<fieldset><legend>Qué campo es cada cosa</legend>' +
+            fila([['c_lote','Código de lote', false],['c_finca','Nombre de la finca', true],
+                  ['c_zona','Zona', true]]) +
+            fila([['c_desc','Descripción', true],['c_sector','Sector', true],
+                  ['c_canial','Cañal', true]]) +
+            fila([['c_variedad','Variedad', true],['c_area','Área del ingenio', true],
+                  ['c_dist','Distanciamiento', true]]) +
+            fila([['c_textura','Textura', true],['c_riego','Tipo de riego', true],
+                  ['c_cosecha','Tipo de cosecha', true]]) +
+            fila([['c_estrato','Estrato', true]]) +
+            '<p class="guia" style="margin:10px 0 0">El área que usa el módulo es la que se ' +
+            'calcula del polígono. La del ingenio se guarda aparte, solo para comparar.</p>' +
+            '<div class="acciones"><button id="importarCapa">Reemplazar capa</button></div>' +
+          '</fieldset>';
+
+        [['c_lote',/no_lote|lote|plot/i],['c_finca',/desc_finca|nombre_finca/i],['c_zona',/zona/i],
+         ['c_desc',/desc_lote|descripcion/i],['c_sector',/^sector/i],['c_canial',/canial|cañal/i],
+         ['c_variedad',/varied/i],['c_area',/area|área|ha/i],['c_dist',/dist|siemb/i],
+         ['c_textura',/text/i],['c_riego',/riego/i],['c_cosecha',/^cosecha/i],['c_estrato',/estrat/i]]
         .forEach(function(c){
-          llenarSelect($(c[0]), campos, null, c[2]);
+          llenarSelect($(c[0]), info.campos, null, c[0] !== 'c_lote');
           autoseleccionar($(c[0]), c[1]);
         });
-        msg(info.n + ' polígonos en ' + info.archivo + '.', 'ok');
-      }, function(e){ msg(e.message, 'err'); });
-  };
 
-  $('btnImportar').onclick = function(){
-    var btn = this;
-    if (!val('c_lote')) return msg('Indique cuál campo trae el código de lote.', 'err');
-    btn.disabled = true;
-    msg('Importando y calculando áreas… puede tardar un minuto.', 'info');
-    llamar('importarCapaBase', [{
-        idArchivo: val('idArchivo'), crs: 'AUTO',
-        campos: { lote: val('c_lote'), desc: val('c_desc'), variedad: val('c_variedad'),
-                  area: val('c_area'), dist: val('c_dist'), textura: val('c_textura'),
-                  riego: val('c_riego'), cosecha: val('c_cosecha'), estrato: val('c_estrato') }
-      }], function(r){
-        msg('Listo: ' + r.lotes + ' lotes, ' + r.hectareas + ' ha y ' + r.fincas + ' fincas.<br>' +
-            'Escriba los nombres en la hoja FINCAS y use <b>Aplicar nombres de finca</b>.', 'ok');
-        btn.disabled = false;
-      }, function(e){ msg(e.message, 'err'); btn.disabled = false; });
-  };
+        $('importarCapa').onclick = function(){
+          if (!val('c_lote')) return msg('Indique cuál campo trae el código de lote.', 'err');
+          if (!confirm('Esto reemplaza los ' + info.n + ' lotes de la capa actual.\n\n¿Continuar?')) return;
+          this.disabled = true;
+          msg('Importando y calculando áreas… puede tardar un minuto.', 'info');
+          llamar('apiImportarCapa', [{
+            token: tokenGuardado(), enlace: val('enlaceCapa'), crs: 'AUTO',
+            nombreArchivo: info.archivo,
+            campos: { lote: val('c_lote'), finca: val('c_finca'), zona: val('c_zona'),
+                      desc: val('c_desc'), sector: val('c_sector'), canial: val('c_canial'),
+                      variedad: val('c_variedad'), area: val('c_area'), dist: val('c_dist'),
+                      textura: val('c_textura'), riego: val('c_riego'),
+                      cosecha: val('c_cosecha'), estrato: val('c_estrato') }
+          }], function(res){
+            msg(res.mensaje, 'ok');
+            llamar('apiAdmin', [tokenGuardado()], pintar);
+          }, function(e){ msg(e.message, 'err'); $('importarCapa').disabled = false; });
+        };
+      }, function(e){ msg(e.message, 'err'); });
+    };
+
+    function fila(campos){
+      return '<div class="fila">' + campos.map(function(c){
+        return '<div><label>' + c[1] + '</label><select id="' + c[0] + '"></select></div>';
+      }).join('') + '</div>';
+    }
+  }
+
+  /* -------------------------- fincas -------------------------- */
+  function pestanaFincas(fincas){
+    $('t_fincas').innerHTML =
+      '<section class="grupo">' +
+        '<p class="guia">El código de finca son los tres primeros dígitos del lote. ' +
+        'Lo que escriba aquí se copia a todos los lotes de esa finca.</p>' +
+        '<table class="tabla"><tr><th>Código</th><th>Nombre de la finca</th><th>Zona</th>' +
+        '<th class="num">Lotes</th><th class="num">Hectáreas</th></tr>' +
+        fincas.map(function(f){
+          return '<tr' + (f.nombre ? '' : ' class="pronto"') + '><td class="mono">' + f.cod + '</td>' +
+            '<td><input class="enTabla" data-cod="' + f.cod + '" data-campo="nombre" value="' +
+              (f.nombre||'').replace(/"/g,'&quot;') + '"></td>' +
+            '<td><input class="enTabla chica" data-cod="' + f.cod + '" data-campo="zona" value="' +
+              (f.zona||'') + '"></td>' +
+            '<td class="num">' + f.lotes + '</td><td class="num">' + f.areaHa + '</td></tr>';
+        }).join('') + '</table>' +
+        '<div class="acciones"><button id="guardarFincas">Guardar</button></div>' +
+      '</section>';
+
+    $('guardarFincas').onclick = function(){
+      var m = {};
+      [].forEach.call($('t_fincas').querySelectorAll('.enTabla'), function(i){
+        m[i.dataset.cod] = m[i.dataset.cod] || { cod: i.dataset.cod };
+        m[i.dataset.cod][i.dataset.campo] = i.value.trim();
+      });
+      this.disabled = true;
+      msg('Guardando…', 'info');
+      llamar('apiGuardarFincas', [tokenGuardado(), Object.keys(m).map(function(k){ return m[k]; })],
+        function(res){
+          msg(res.mensaje, 'ok');
+          $('guardarFincas').disabled = false;
+          pestanaFincas(res.fincas);
+        }, function(e){ msg(e.message, 'err'); $('guardarFincas').disabled = false; });
+    };
+  }
+
+  /* ----------------------- programa de corte ----------------------- */
+  function pestanaCortes(){
+    $('t_cortes').innerHTML =
+      '<section class="grupo">' +
+        '<p class="guia">Suba el programa que le pasa cosecha. Las alertas de cosecha salen ' +
+        'de aquí: si cambian las fechas, las tareas se mueven solas. Acepta Excel o CSV.</p>' +
+        '<label>Archivo del programa de corte</label>' +
+        '<input type="file" id="archCortes" accept=".csv,.xlsx,.xls,.txt">' +
+        '<div class="acciones"><button class="sec" id="leerCortes">Leer archivo</button></div>' +
+        '<div id="mapeoCortes"></div>' +
+        '<div id="listaCortes"><div class="cargando">Cargando programa vigente…</div></div>' +
+      '</section>';
+
+    $('leerCortes').onclick = function(){
+      leerArchivo($('archCortes'), function(f){
+        msg('Leyendo…', 'info');
+        llamar('apiImportarCortes', [{ token: tokenGuardado(), nombre: f.nombre,
+                                        base64: f.base64, campos: null }],
+        function(r){
+          if (!r.elegirCampos) return terminar(r);
+          msg(r.filas + ' filas encontradas. Indique qué columna es cada cosa.', 'ok');
+          $('mapeoCortes').innerHTML =
+            '<fieldset><legend>Columnas del archivo</legend><div class="fila">' +
+              '<div><label>Lote</label><select id="k_lote"></select></div>' +
+              '<div><label>Fecha de corte</label><select id="k_fecha"></select></div>' +
+              '<div><label>Zafra (opcional)</label><select id="k_zafra"></select></div>' +
+            '</div><div class="acciones"><button id="subirCortes">Cargar programa</button></div>' +
+            '</fieldset>';
+          [['k_lote',/lote|plot/i,false],['k_fecha',/fecha|corte|date/i,false],
+           ['k_zafra',/zafra|temporada/i,true]].forEach(function(c){
+            llenarSelect($(c[0]), r.campos, null, c[2]);
+            autoseleccionar($(c[0]), c[1]);
+          });
+          $('subirCortes').onclick = function(){
+            this.disabled = true;
+            msg('Cargando el programa y ajustando tareas…', 'info');
+            llamar('apiImportarCortes', [{ token: tokenGuardado(), nombre: f.nombre,
+              base64: f.base64,
+              campos: { lote: val('k_lote'), fecha: val('k_fecha'), zafra: val('k_zafra') } }],
+              terminar, function(e){ msg(e.message, 'err'); $('subirCortes').disabled = false; });
+          };
+        }, function(e){ msg(e.message, 'err'); });
+      });
+    };
+
+    function terminar(r){
+      var extra = [];
+      if (r.desconocidos) extra.push(r.desconocidos + ' lotes no están en la capa base');
+      if (r.invalidas) extra.push(r.invalidas + ' filas con fecha ilegible');
+      msg(r.mensaje + (extra.length ? '<br>' + extra.join(' · ') + '.' : ''), 'ok');
+      $('mapeoCortes').innerHTML = '';
+      $('archCortes').value = '';
+      listaCortes();
+    }
+
+    listaCortes();
+    function listaCortes(){
+      llamar('apiCortes', [tokenGuardado(), ''], function(r){
+        $('listaCortes').innerHTML = r.total
+          ? '<h3 class="sub">Programa vigente' + (r.origen ? ' · ' + r.origen : '') + '</h3>' +
+            '<p class="nota">' + r.total + ' lotes programados' +
+            (r.total > r.cortes.length ? ', se muestran los ' + r.cortes.length + ' más próximos' : '') + '.</p>' +
+            '<table class="tabla"><tr><th>Fecha</th><th>Lote</th><th>Finca</th><th>Sector</th>' +
+            '<th class="num">Hectáreas</th></tr>' +
+            r.cortes.map(function(c){
+              return '<tr' + (c.conocido ? '' : ' class="tarde"') + '>' +
+                '<td class="mono">' + c.fecha + '</td><td class="mono">' + c.lote + '</td>' +
+                '<td>' + (c.finca || (c.conocido ? '' : 'lote fuera de la capa')) + '</td>' +
+                '<td>' + c.desc + '</td><td class="num">' + c.areaHa + '</td></tr>';
+            }).join('') + '</table>'
+          : '<p class="vacio">Todavía no hay programa de corte cargado.</p>';
+      }, function(e){ $('listaCortes').innerHTML = ''; msg(e.message, 'err'); });
+    }
+  }
 }
 
 /* ====================== PROTOCOLOS EN PDF ====================== */
@@ -2184,7 +2543,7 @@ var PANTALLAS = { inicio: vistaInicio, linea: vistaLinea, base: vistaBase,
                   protocolos: vistaProtocolos, panel: vistaPanel, ensayo: vistaEnsayo,
                   geo: vistaGeo, indices: vistaIndices, croquis: vistaCroquis, app: vistaApp,
                   tareas: vistaTareas, analisis: vistaAnalisis, calidad: vistaCalidad,
-                  fincas: vistaFincas, usuarios: vistaUsuarios };
+                  usuarios: vistaUsuarios };
 
 function dibujar(vista){ (PANTALLAS[vista] || vistaApp)(); }
 
