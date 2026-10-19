@@ -158,7 +158,8 @@
   table.tabla th{font-size:10.5px;color:var(--tenue);font-weight:600;text-align:left;padding:10px 9px;
     border-bottom:1px solid var(--linea);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;background:#FBFCFB}
   table.tabla td{padding:8px 9px;border-bottom:1px solid #EEF1EE;vertical-align:top}
-  table.tabla td .sub{display:block;font-size:11.5px;color:var(--tenue);margin-top:2px}
+  table.tabla td .sub{display:block;font-size:11.5px;color:var(--tenue);margin-top:2px;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  table.tabla td.trat-td{min-width:160px}
   table.tabla tr:last-child td{border-bottom:0}
   table.tabla td.num,table.tabla th.num{text-align:right;font-variant-numeric:tabular-nums}
   table.tabla tr.clic{cursor:pointer} table.tabla tr.clic:hover td{background:var(--verde-tenue)}
@@ -211,19 +212,35 @@
   .archivo .txt span{font-size:12px;color:var(--tenue)}
 
   .actividad{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--linea);border-radius:8px;
-    padding:10px 12px;margin-bottom:8px}
-  .actividad input[type=checkbox]{margin-top:4px}
-  .actividad .txt{flex:1;min-width:0}
-  .actividad .txt b{font-size:14px}
+    padding:10px 12px;margin-bottom:8px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--texto);
+    cursor:pointer}
+  .actividad:hover{border-color:var(--verde)}
+  .actividad input[type=checkbox]{margin-top:4px;flex:0 0 auto}
+  .actividad .txt{flex:1;min-width:0;display:block}
+  .actividad .txt b{font-size:14px;color:var(--ink)}
   .actividad .txt span{display:block;font-size:12px;color:var(--tenue)}
   .actividad .txt span.tipo-act{display:inline-block}
   .actividad .nums{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .actividad .nums label{margin:0;font-size:10px}
-  .actividad .nums input{width:78px;padding:6px 8px;font-size:13px}
+  .actividad .nums input{width:92px;padding:6px 8px;font-size:13px}
   .tipo-act{font-size:10px;font-weight:700;letter-spacing:.6px;border-radius:6px;padding:2px 7px;margin-left:6px}
   .tipo-act.MUESTREO{background:var(--verde-tenue);color:var(--verde)}
   .tipo-act.VUELO{background:#EAF0F5;color:#325C86}
   .tipo-act.COSECHA{background:var(--ambar);color:var(--acento)}
+  .tipo-act.ENTREGA{background:#EDE7F6;color:#5E35B1}
+  .tipo-act.COSTO{background:#FBE9E7;color:#BF360C}
+
+  /* tratamientos con varios productos */
+  .trat{background:#fff;border:1px solid var(--linea);border-left:4px solid var(--verde);border-radius:var(--radio);
+    padding:12px 14px;margin-bottom:10px;box-shadow:var(--sombra)}
+  .trat .cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .trat .cab .tCod{width:90px;font:700 14px var(--mono)}
+  .trat .cab .tDesc{flex:1 1 180px}
+  .trat .cab .casilla{margin:0;white-space:nowrap}
+  .trat .acciones{margin-top:8px;justify-content:space-between}
+  .trat .tenue{font-size:12.5px}
+  .costo-td{font-variant-numeric:tabular-nums}
+  tr.total td{font-weight:700;background:#FBFCFB}
 
   .buscador{position:relative}
   .sugerencias{position:absolute;left:0;right:0;top:100%;z-index:40;background:#fff;border:1px solid var(--linea);
@@ -702,6 +719,81 @@ function opciones(lista, actual, vacio){
 }
 var PALETA = ['#0D9440', '#E2A400', '#2F7FD6', '#C0392B', '#8E44AD', '#16A085', '#D35400', '#7F8C8D',
               '#2C3E50', '#B5651D', '#27AE60', '#C2185B'];
+
+/** Cuántos litros o kilos es una unidad de dosis (para el costo por hectárea). */
+var UNIDAD_FACTOR = { 'L/ha': 1, 'cc/ha': 0.001, 'ml/ha': 0.001, 'kg/ha': 1, 'g/ha': 0.001, 'lb/ha': 0.453592 };
+
+/** Lista de equipos agrupada por tipo, con el código y la máquina. */
+function selectEquipos(id, equipos, actual){
+  var grupos = [];
+  (equipos || []).forEach(function(q){
+    var g = grupos.filter(function(x){ return x.nombre === q.tipoNombre; })[0];
+    if (!g) grupos.push(g = { nombre: q.tipoNombre, items: [] });
+    g.items.push(q);
+  });
+  return '<select id="' + id + '"><option value="">— sin definir —</option>' + grupos.map(function(g){
+    return '<optgroup label="' + h(g.nombre) + '">' + g.items.map(function(q){
+      return '<option value="' + h(q.codigo) + '"' + (String(q.codigo) === String(actual) ? ' selected' : '') + '>' +
+        h(q.codigo) + (q.desc ? ' · ' + h(q.desc) : '') + '</option>';
+    }).join('') + '</optgroup>';
+  }).join('') + (actual && !(equipos || []).some(function(q){ return String(q.codigo) === String(actual); })
+    ? '<option value="' + h(actual) + '" selected>' + h(actual) + ' (fuera del catálogo)</option>' : '') + '</select>';
+}
+
+/* ------------------- Actividades del plan (catálogo) ------------------- */
+var GRUPOS_PLAN = [['MUESTREO', 'Muestreos'], ['ENTREGA', 'Entregas a otro departamento'],
+                   ['VUELO', 'Vuelos con dron'], ['COSECHA', 'Cosecha'],
+                   ['COSTO', 'Costos que se llevan por tratamiento']];
+
+/**
+ * Lista de actividades para marcar. Las que se cuentan desde la cosecha
+ * se muestran como "días antes de cortar", que es como se habla de ellas.
+ */
+function planHTML(plantillas, yaElegidas){
+  if (!plantillas || !plantillas.length) {
+    return '<p class="vacio">Este departamento todavía no tiene actividades en el catálogo. ' +
+           'El propietario las agrega en Configuración ▸ Muestreos, vuelos, cosecha y costos.</p>';
+  }
+  return GRUPOS_PLAN.map(function(g){
+    var de = plantillas.filter(function(p){ return p.tipo === g[0]; });
+    if (!de.length) return '';
+    return '<h3>' + h(g[1]) + '</h3>' + de.map(function(p){
+      var marcado = yaElegidas ? yaElegidas.indexOf(p.id) >= 0 : p.tipo !== 'VUELO';
+      var desdeCosecha = p.referencia === 'COSECHA';
+      var sinDias = p.dias === '' || p.dias === null || p.dias === undefined;
+      var nums;
+      if (p.tipo === 'COSECHA' || (desdeCosecha && Number(p.dias) === 0)) {
+        nums = '<span>La fecha la pone el programa de corte del ingenio; el aviso sale ' +
+               (p.diasAviso || 8) + ' días antes.</span>';
+      } else if (desdeCosecha) {
+        nums = '<div class="nums"><div><label>Días antes de la cosecha</label>' +
+               '<input type="number" class="pDias" data-antes="1" min="0" value="' + h(Math.abs(Number(p.dias) || 0)) + '"></div>' +
+               '<div><label>Veces</label><input type="number" class="pVeces" min="1" value="' + h(p.eventos || 1) + '"></div></div>';
+      } else {
+        nums = '<div class="nums"><div><label>A los días</label><input type="number" class="pDias" value="' + h(sinDias ? '' : p.dias) + '"></div>' +
+               '<div><label>Cada (días)</label><input type="number" class="pFrec" value="' + h(p.frecuencia || '') + '"></div>' +
+               '<div><label>Veces</label><input type="number" class="pVeces" min="0" value="' + h(p.eventos === 0 ? 0 : (p.eventos || 1)) + '"></div></div>' +
+               (Number(p.eventos) === 0 ? '<span class="ayuda">0 veces = se repite hasta la cosecha.</span>' : '');
+      }
+      return '<label class="actividad"><input type="checkbox" data-plantilla="' + h(p.id) + '"' + (marcado ? ' checked' : '') + '>' +
+        '<span class="txt"><b>' + h(p.nombre) + '</b><span class="tipo-act ' + h(p.tipo) + '">' + h(p.tipo) + '</span>' +
+        (p.variables ? '<span>' + h(p.variables) + '</span>' : '') +
+        (p.ayuda ? '<span class="ayuda">' + h(p.ayuda) + '</span>' : '') + nums + '</span></label>';
+    }).join('');
+  }).join('');
+}
+
+/** Lee las actividades marcadas y sus días, listas para el servidor. */
+function leerPlan(raiz){
+  return $$('[data-plantilla]:checked', raiz).map(function(c){
+    var caja = c.closest('.actividad');
+    var dias = caja.querySelector('.pDias'), frec = caja.querySelector('.pFrec'), veces = caja.querySelector('.pVeces');
+    var d = dias ? dias.value : '';
+    if (dias && dias.dataset.antes && d !== '') d = -Math.abs(Number(d));
+    return { idPlantilla: c.dataset.plantilla, dias: d,
+             frecuencia: frec ? frec.value : '', veces: veces ? veces.value : '' };
+  });
+}
 </script>
 <script>
 /* Logotipo de Ingenio Madre Tierra, incrustado para que funcione igual en Apps Script y en GitHub. */
@@ -1069,7 +1161,7 @@ function cablearArchivos(raiz, alBorrar){
  * traen días, frecuencia y variables; se pueden ajustar aquí.
  */
 function vistaNuevoEnsayo(depto){
-  var NE = { lotes: [], form: null };
+  var NE = { lotes: [], form: null, trats: [] };
   var cuerpo = armazon('Nuevo ensayo', '');
   api('formularioEnsayo', depto, '').then(function(f){
     NE.form = f;
@@ -1096,24 +1188,28 @@ function vistaNuevoEnsayo(depto){
         { v: 'BLOQUES', t: 'Bloques al azar' }, { v: 'FRANJAS', t: 'Franjas' }, { v: 'LOTES_COMERCIALES', t: 'Lotes comerciales' },
         { v: 'DCA', t: 'Completamente al azar' }], 'BLOQUES') + '</select></div>' +
       '<div><label>Repeticiones</label><input id="nReps" type="number" value="4" min="1"></div>' +
-      '<div><label>Área de parcela (m²)</label><input id="nArea" type="number" step="0.01"></div>' +
+      '<div><label>Área de parcela (ha)</label><input id="nArea" type="number" step="0.0001" min="0" placeholder="Ej.: 0.05"></div>' +
       '<div><label>Surcos de borde</label><input id="nSurcos" type="number" min="0" placeholder="por lado"></div></div>' +
+      '<div id="nAreaEnsayo" class="guia"></div>' +
       '<div id="nAvisoDiseno"></div>' +
       '<label style="margin-top:14px">Tratamientos</label>' +
-      '<div class="tabla-env"><table class="tabla" id="nTrat"><tr><th style="width:80px">Código</th><th>Descripción</th>' +
-        '<th>Producto</th><th style="width:110px">Dosis</th><th style="width:60px">Testigo</th><th style="width:30px"></th></tr></table></div>' +
+      '<p class="guia">Cada tratamiento puede llevar varios productos. Agregue uno por renglón con su dosis. ' +
+      'El costo no se pide aquí: se registra después en gabinete, en la pestaña Costos del ensayo, ' +
+      'cuando ya se tengan los precios exactos.</p>' +
+      '<div id="nTrats"></div>' +
       '<div class="acciones" style="margin-top:8px"><button class="sec chico" id="nMasTrat">Agregar tratamiento</button></div>' +
     '</section>' +
 
     '<section class="seccion"><h2>Aplicación</h2>' +
       '<div class="fila"><div><label>Fecha de aplicación *</label><input id="nFecha" type="date" value="' + fechaHoyISO() + '"></div>' +
-      '<div><label>Equipo de aplicación</label><select id="nEquipo">' + opciones(f.equipos, '', '—') + '</select></div>' +
+      '<div><label>Equipo de aplicación</label>' + selectEquipos('nEquipo', f.equipos, '') + '</div>' +
       '<div><label>¿Llega a cosecha?</label><select id="nCosecha">' + opciones([{ v: 'SI', t: 'Sí' }, { v: 'NO', t: 'No' }], 'SI') + '</select></div></div>' +
       '<p class="guia" style="margin-top:8px">Todo el cronograma se cuenta en días después de esta fecha (DDA).</p>' +
     '</section>' +
 
-    '<section class="seccion"><h2>Muestreos, vuelos y cosecha</h2>' +
-      '<p class="guia">Marque lo que lleva este ensayo. Los días vienen del catálogo del departamento; ajústelos si este ensayo lo pide.</p>' +
+    '<section class="seccion"><h2>Muestreos, vuelos, cosecha y costos</h2>' +
+      '<p class="guia">Marque lo que lleva este ensayo. Los días vienen del catálogo del departamento; ajústelos si este ensayo lo pide. ' +
+      'Las actividades cambian según el tipo de ensayo.</p>' +
       '<div id="nPlan"></div>' +
     '</section>' +
 
@@ -1133,27 +1229,107 @@ function vistaNuevoEnsayo(depto){
 
     '<div class="acciones"><button id="nCrear">Crear ensayo</button><button class="sec" id="nCancelar">Cancelar</button></div>';
 
-    filaTrat('T1', 'Testigo', true); filaTrat('T2'); filaTrat('T3');
-    $('nMasTrat').onclick = function(){ filaTrat('T' + ($$('#nTrat tr').length)); };
-    $('nDiseno').onchange = avisoDiseno; avisoDiseno();
-    $('nTipo').onchange = cargarCampos; cargarCampos();
+    NE.trats = [{ codigo: 'T1', desc: 'Testigo absoluto', testigo: true, productos: [] },
+                { codigo: 'T2', desc: '', testigo: false, productos: [{}] },
+                { codigo: 'T3', desc: '', testigo: false, productos: [{}] }];
+    pintarTrats();
+    $('nMasTrat').onclick = function(){
+      leerTrats();
+      NE.trats.push({ codigo: 'T' + (NE.trats.length + 1), desc: '', testigo: false, productos: [{}] });
+      pintarTrats();
+    };
+    $('nDiseno').onchange = function(){ avisoDiseno(); areaEnsayo(); }; avisoDiseno();
+    $('nReps').oninput = areaEnsayo; $('nArea').oninput = areaEnsayo; areaEnsayo();
+    $('nTipo').onchange = function(){ cargarCampos(); recargarPlantillas(); }; cargarCampos();
     $('nCancelar').onclick = atras;
     pintarPlan();
     cablearBuscador();
     $('nCrear').onclick = crear;
   }).catch(function(e){ cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; });
 
-  function filaTrat(cod, desc, testigo){
-    var tr = $('nTrat').insertRow(-1);
-    tr.innerHTML = '<td><input class="tCod" value="' + h(cod || '') + '"></td><td><input class="tDesc" value="' + h(desc || '') + '"></td>' +
-      '<td><input class="tProd" list="nProductos"></td><td><input class="tDosis"></td>' +
-      '<td style="text-align:center"><input type="checkbox" class="tTest"' + (testigo ? ' checked' : '') + '></td>' +
-      '<td><button class="icono">×</button></td>';
-    tr.querySelector('.icono').onclick = function(){ tr.parentNode.removeChild(tr); };
-    if (!$('nProductos') && NE.form.productos.length) {
+  /** Lee lo escrito en pantalla al estado, para no perderlo al redibujar. */
+  function leerTrats(){
+    NE.trats = $$('.trat', cuerpo).map(function(c){
+      return {
+        codigo: c.querySelector('.tCod').value.trim(),
+        desc: c.querySelector('.tDesc').value.trim(),
+        testigo: c.querySelector('.tTest').checked,
+        productos: $$('.prod', c).map(function(p){
+          return { producto: p.querySelector('.pProd').value.trim(), dosis: p.querySelector('.pDosis').value.trim(),
+                   unidad: p.querySelector('.pUnidad').value };
+        })
+      };
+    });
+    return NE.trats;
+  }
+
+  function pintarTrats(){
+    var f = NE.form;
+    $('nTrats').innerHTML = NE.trats.map(function(t, i){
+      return '<div class="trat" data-t="' + i + '">' +
+        '<div class="cab"><input class="tCod" value="' + h(t.codigo) + '" placeholder="T1" maxlength="12">' +
+        '<input class="tDesc" value="' + h(t.desc) + '" placeholder="Descripción del tratamiento">' +
+        '<label class="casilla"><input type="checkbox" class="tTest"' + (t.testigo ? ' checked' : '') + '> testigo</label>' +
+        (NE.trats.length > 2 ? '<button class="icono" data-quitar-t="' + i + '" title="Quitar">×</button>' : '') + '</div>' +
+        (t.productos.length ? '<label style="margin-top:8px">Producto y dosis por hectárea</label>' +
+          t.productos.map(function(p, j){
+            return '<div class="fila prod" style="gap:6px;margin-bottom:6px">' +
+              '<div style="flex:3 1 170px"><input class="pProd" list="nProductos" placeholder="Producto" value="' + h(p.producto || '') + '"></div>' +
+              '<div style="flex:1 1 86px"><input class="pDosis" type="number" inputmode="decimal" step="any" min="0" placeholder="Dosis" value="' + h(p.dosis || '') + '"></div>' +
+              '<div style="flex:1 1 104px"><select class="pUnidad">' + opciones(f.unidades, p.unidad || 'L/ha') + '</select></div>' +
+              '<div style="flex:0 0 38px"><button class="icono" data-quitar-p="' + i + ':' + j + '">×</button></div></div>';
+          }).join('') : '<p class="guia" style="margin:6px 0 0">Sin productos (testigo absoluto).</p>') +
+        '<div class="acciones" style="margin-top:8px"><button class="sec chico" data-mas-p="' + i + '">Agregar producto</button>' +
+        '<span class="tenue" id="cTrat' + i + '"></span></div></div>';
+    }).join('');
+
+    if (!$('nProductos') && f.productos.length) {
       var dl = document.createElement('datalist'); dl.id = 'nProductos';
-      dl.innerHTML = opciones(NE.form.productos); document.body.appendChild(dl);
+      dl.innerHTML = opciones(f.productos); document.body.appendChild(dl);
     }
+    al('[data-mas-p]', 'click', function(b){ leerTrats(); NE.trats[Number(b.dataset.masP)].productos.push({}); pintarTrats(); }, cuerpo);
+    al('[data-quitar-p]', 'click', function(b){
+      var p = b.dataset.quitarP.split(':');
+      leerTrats(); NE.trats[Number(p[0])].productos.splice(Number(p[1]), 1); pintarTrats();
+    }, cuerpo);
+    al('[data-quitar-t]', 'click', function(b){ leerTrats(); NE.trats.splice(Number(b.dataset.quitarT), 1); pintarTrats(); }, cuerpo);
+    al('.trat input, .trat select', 'input', costoTrats, cuerpo);
+    costoTrats();
+    areaEnsayo();
+  }
+
+  /**
+   * El costo no se pide al establecer el ensayo: se registra después en
+   * gabinete, con los datos exactos. Aquí solo se resume lo que lleva cada
+   * tratamiento.
+   */
+  function costoTrats(){
+    $$('.trat', cuerpo).forEach(function(c, i){
+      var partes = [];
+      $$('.prod', c).forEach(function(p){
+        var n = p.querySelector('.pProd').value.trim(), d = p.querySelector('.pDosis').value.trim();
+        if (n) partes.push(n + (d ? ' ' + d + ' ' + p.querySelector('.pUnidad').value : ''));
+      });
+      var caja = $('cTrat' + i);
+      if (caja) caja.textContent = partes.join(' + ');
+    });
+  }
+
+  function areaEnsayo(){
+    if (!$('nAreaEnsayo')) return;
+    var a = Number(val('nArea')), reps = val('nDiseno') === 'LOTES_COMERCIALES' ? 1 : Number(val('nReps')) || 1;
+    var nt = $$('.trat', cuerpo).length || NE.trats.length;
+    $('nAreaEnsayo').innerHTML = a > 0 && nt
+      ? 'El ensayo ocupará <b>' + numero(a * reps * nt, 4) + ' ha</b>: ' + nt + ' tratamientos × ' + reps +
+        ' repeticiones × ' + numero(a, 4) + ' ha. El área del ensayo es la suma de sus parcelas, no la del lote.'
+      : 'Escriba el área de la parcela para saber cuánto ocupa el ensayo.';
+  }
+
+  function recargarPlantillas(){
+    api('formularioEnsayo', depto, val('nTipo')).then(function(f){
+      NE.form.plantillas = f.plantillas;
+      pintarPlan();
+    }).catch(fallo);
   }
 
   function avisoDiseno(){
@@ -1174,23 +1350,7 @@ function vistaNuevoEnsayo(depto){
   }
 
   function pintarPlan(){
-    var grupos = { MUESTREO: 'Muestreos', VUELO: 'Vuelos con dron', COSECHA: 'Cosecha' };
-    var pl = NE.form.plantillas;
-    $('nPlan').innerHTML = pl.length ? Object.keys(grupos).map(function(g){
-      var de = pl.filter(function(p){ return p.tipo === g; });
-      if (!de.length) return '';
-      return '<h3>' + grupos[g] + '</h3>' + de.map(function(p){
-        var sinDias = p.dias === '' || p.dias === null;
-        return '<div class="actividad"><input type="checkbox" data-plantilla="' + h(p.id) + '"' + (g === 'COSECHA' ? ' checked' : '') + '>' +
-          '<div class="txt"><b>' + h(p.nombre) + '</b><span class="tipo-act ' + g + '">' + g + '</span>' +
-          '<span>' + h(p.variables || 'sin variables definidas') + '</span>' +
-          (sinDias && g === 'COSECHA' ? '<span>La fecha la pone el programa de corte del ingenio.</span>' :
-          '<div class="nums"><div><label>A los días</label><input type="number" class="pDias" value="' + h(p.dias) + '"></div>' +
-          '<div><label>Cada (días)</label><input type="number" class="pFrec" value="' + h(p.frecuencia) + '"></div>' +
-          '<div><label>Veces</label><input type="number" class="pVeces" value="' + h(p.eventos || 1) + '" min="1"></div></div>') +
-          '</div></div>';
-      }).join('');
-    }).join('') : '<p class="vacio">El departamento no tiene plantillas de muestreo. El propietario las agrega en Configuración.</p>';
+    $('nPlan').innerHTML = planHTML(NE.form.plantillas, null);
   }
 
   function cablearBuscador(){
@@ -1245,16 +1405,15 @@ function vistaNuevoEnsayo(depto){
   function crear(){
     if (!val('nNombre')) return msg('Escriba el nombre del ensayo.', 'err');
     if (!NE.lotes.length) return msg('Agregue al menos un lote.', 'err');
-    var trats = $$('#nTrat tr').slice(1).map(function(tr){
-      return { codigo: tr.querySelector('.tCod').value.trim(), descripcion: tr.querySelector('.tDesc').value.trim(),
-               producto: tr.querySelector('.tProd').value.trim(), dosis: tr.querySelector('.tDosis').value.trim(),
-               testigo: tr.querySelector('.tTest').checked };
-    }).filter(function(t){ return t.codigo; });
-    if (trats.length < 2) return msg('Registre al menos dos tratamientos.', 'err');
-    var actividades = $$('[data-plantilla]:checked', cuerpo).map(function(c){
-      var box = c.parentNode, g = function(cl){ var i = box.querySelector(cl); return i ? i.value : ''; };
-      return { idPlantilla: c.dataset.plantilla, dias: g('.pDias'), frecuencia: g('.pFrec'), veces: g('.pVeces') };
+    var trats = leerTrats().filter(function(t){ return t.codigo; }).map(function(t){
+      return { codigo: t.codigo, descripcion: t.desc, testigo: t.testigo,
+               productos: t.productos.filter(function(p){ return p.producto; }) };
     });
+    if (trats.length < 2) return msg('Registre al menos dos tratamientos.', 'err');
+    var sinDosis = [];
+    trats.forEach(function(t){ t.productos.forEach(function(p){ if (!p.dosis) sinDosis.push(t.codigo + ' · ' + p.producto); }); });
+    if (sinDosis.length && !confirm('Estos productos no llevan dosis:\n' + sinDosis.join('\n') + '\n\n¿Continuar así?')) return;
+    var actividades = leerPlan(cuerpo);
     var campos = {};
     $$('#nCampos [data-campo]').forEach(function(i){ if (i.value !== '') campos[i.dataset.campo] = i.value; });
 
@@ -1262,7 +1421,7 @@ function vistaNuevoEnsayo(depto){
     msg('Creando el ensayo, las parcelas y el cronograma…', 'info', true);
     api('crearEnsayo', {
       departamento: depto, nombre: val('nNombre'), tipo: val('nTipo'), descripcion: val('nDesc'), objetivo: val('nObjetivo'),
-      diseno: val('nDiseno'), repeticiones: val('nReps'), areaParcela: val('nArea'), surcosBorde: val('nSurcos'),
+      diseno: val('nDiseno'), repeticiones: val('nReps'), areaParcelaHa: val('nArea'), surcosBorde: val('nSurcos'),
       fechaAplicacion: val('nFecha'), equipo: val('nEquipo'), llegaACosecha: val('nCosecha'),
       responsable: val('nResp'), email: val('nEmail'),
       lotes: NE.lotes.map(function(l){ return { lote: l.lote, rol: l.rol }; }),
@@ -1281,7 +1440,8 @@ function vistaNuevoEnsayo(depto){
         });
       });
       return cadena.then(function(){ return shpLeido; }).then(function(archivoShp){
-        msg('Ensayo creado: ' + r.parcelas + ' parcelas y ' + r.tareas + ' tareas programadas.' +
+        msg('Ensayo creado: ' + r.parcelas + ' parcelas' + (r.areaHa ? ' · ' + numero(r.areaHa, 4) + ' ha' : '') +
+          ' y ' + r.tareas + ' tareas programadas.' +
           (r.traslapes.length ? '<br>Atención: ' + r.traslapes.length + ' lote(s) ya tienen ensayos activos de otros departamentos.' : ''), 'ok', true);
         reemplazar(function(){ vistaEnsayo(id, archivoShp ? 'parcelas' : 'resumen', archivoShp); });
       });
@@ -1318,11 +1478,9 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       armazon(r.ensayo.nombre, r.ensayo.deptoNombre + ' · ' + r.ensayo.id);
       cuerpo = $('cuerpo');
       cuerpo.innerHTML =
-        '<div class="pestanas" id="pest">' + [['resumen', 'Resumen'], ['parcelas', 'Parcelas y mapa'], ['seguimiento', 'Seguimiento'],
-          ['bitacora', 'Bitácora'], ['archivos', 'Archivos'], ['resultados', 'Resultados']].map(function(p){
-          return '<button data-p="' + p[0] + '"' + (p[0] === actual ? ' class="on"' : '') + '>' + p[1] +
-            (p[0] === 'bitacora' && r.bitacora.length ? ' · ' + r.bitacora.length : '') +
-            (p[0] === 'archivos' && r.archivos.length ? ' · ' + r.archivos.length : '') + '</button>';
+        '<div class="pestanas" id="pest">' + pestanas(r).map(function(p){
+          return '<button data-p="' + p[0] + '"' + (p[0] === actual ? ' class="on"' : '') + '>' + h(p[1]) +
+            (p[2] ? ' · ' + p[2] : '') + '</button>';
         }).join('') + '</div><div id="pCuerpo"></div>';
       al('#pest button', 'click', function(b){
         actual = b.dataset.p;
@@ -1334,11 +1492,28 @@ function vistaEnsayo(id, pestana, archivoParcelas){
     }).catch(function(e){ cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; });
   }
 
+  /** Las pestañas dependen de lo que tenga el ensayo: no todos llevan costos ni entregas. */
+  function pestanas(r){
+    var hayEntregas = r.entregas.length || r.plan.some(function(p){ return p.tipo === 'ENTREGA'; });
+    var hayCostos = r.costos.registrados || r.plan.some(function(p){ return p.tipo === 'COSTO'; }) ||
+                    r.costos.tratamientos.some(function(t){ return t.conceptos.PRODUCTO; });
+    var p = [['resumen', 'Resumen', ''], ['parcelas', 'Parcelas y mapa', ''], ['seguimiento', 'Seguimiento', '']];
+    if (hayEntregas) p.push(['entregas', 'Entregas', r.entregas.length || '']);
+    if (hayCostos && puede('costos')) p.push(['costos', 'Costos', '']);
+    if (r.datos.malezas) p.push(['malezas', 'Malezas', '']);
+    p.push(['bitacora', 'Bitácora', r.bitacora.length || '']);
+    p.push(['archivos', 'Archivos', r.archivos.length || '']);
+    p.push(['resultados', 'Resultados', '']);
+    return p;
+  }
+
   function mostrar(){
     limpiarPantalla();
     var c = $('pCuerpo');
-    ({ resumen: pResumen, parcelas: pParcelas, seguimiento: pSeguimiento, bitacora: pBitacora,
-       archivos: pArchivos, resultados: pResultados })[actual](c);
+    var fn = { resumen: pResumen, parcelas: pParcelas, seguimiento: pSeguimiento, bitacora: pBitacora,
+               archivos: pArchivos, resultados: pResultados, costos: pCostos, malezas: pMalezas,
+               entregas: pEntregas }[actual] || pResumen;
+    fn(c);
   }
 
   /* ------------------------------ resumen ------------------------------ */
@@ -1353,20 +1528,34 @@ function vistaEnsayo(id, pestana, archivoParcelas){
         (puede('editar') ? '<button class="sec chico" id="rEditar" style="margin-left:auto">Editar datos</button>' : '') + '</div>' +
       '<div class="ficha">' +
         dato('Departamento', e.deptoNombre) + dato('Tipo', e.tipo) + dato('Zona', e.zonas) + dato('Finca', e.fincas) +
-        dato('Lotes', e.lotes) + dato('Variedad', e.variedad) + dato('Área en ensayo', e.areaHa ? e.areaHa + ' ha' : '') +
+        dato('Lotes', e.lotes) + dato('Variedad', e.variedad) +
+        dato('Área del ensayo', e.areaHa ? numero(e.areaHa, 4) + ' ha' : 'falta el área de parcela') +
+        dato('Área de los lotes', e.areaLoteHa ? numero(e.areaLoteHa, 2) + ' ha' : '') +
         dato('Diseño', String(e.diseno || '').replace(/_/g, ' ').toLowerCase()) +
         dato('Tratamientos × rep.', e.tratamientos + ' × ' + e.repeticiones) +
-        dato('Área de parcela', e.areaParcela ? e.areaParcela + ' m²' : '') + dato('Surcos de borde', e.surcosBorde) +
-        dato('Aplicación', e.aplicacion) + dato('Equipo', e.equipo) + dato('Cosecha estimada', e.cosechaEst) +
+        dato('Área de parcela', e.areaParcelaHa ? numero(e.areaParcelaHa, 4) + ' ha' : '') +
+        dato('Distancia entre surcos', e.distSurcos ? numero(e.distSurcos, 2) + ' m' : '') +
+        dato('Surcos de borde', e.surcosBorde) +
+        dato('Aplicación', e.aplicacion) +
+        dato('Equipo', e.equipo ? e.equipo + (e.equipoDesc ? ' · ' + e.equipoDesc : '') : '') +
+        dato('Cosecha estimada', e.cosechaEst) +
         dato('Responsable', e.responsable) + dato('Creado por', e.creadoPor + (e.creado ? ' · ' + e.creado : '')) +
       '</div>' +
       (e.descripcion ? '<h2>Descripción</h2><div class="texto-largo">' + h(e.descripcion) + '</div>' : '') +
       (e.objetivo ? '<h2>Objetivo</h2><div class="texto-largo">' + h(e.objetivo) + '</div>' : '') +
       (F.valores.length ? '<h2>Datos del departamento</h2><div class="ficha">' + F.valores.map(function(v){
         return dato(v.etiqueta, v.valor + (v.unidad ? ' ' + v.unidad : '')); }).join('') + '</div>' : '') +
-      '<h2>Tratamientos</h2><div class="tabla-env" style="margin-bottom:18px"><table class="tabla"><tr><th>Código</th><th>Descripción</th><th>Producto</th><th>Dosis</th></tr>' +
-        F.tratamientos.map(function(t){ return '<tr><td class="mono"><b>' + h(t.codigo) + '</b>' + (t.testigo ? ' <span class="chip">testigo</span>' : '') +
-          '</td><td>' + h(t.descripcion) + '</td><td>' + h(t.producto) + '</td><td>' + h(t.dosis) + '</td></tr>'; }).join('') + '</table></div>' +
+      '<h2>Tratamientos</h2><div class="tabla-env" style="margin-bottom:10px"><table class="tabla"><tr><th>Código</th>' +
+        '<th>Descripción</th><th>Productos y dosis</th><th class="num">Área</th>' + (puede('editar') ? '<th></th>' : '') + '</tr>' +
+        F.tratamientos.map(function(t){
+          return '<tr><td class="mono trat-td"><b>' + h(t.codigo) + '</b>' + (t.testigo ? '<br><span class="chip">testigo</span>' : '') +
+          '</td><td>' + h(t.descripcion) + '</td><td>' + (t.productos.length ? t.productos.map(function(p){
+            return h(p.producto) + (p.dosis !== '' ? ' <b>' + h(p.dosis) + ' ' + h(p.unidad) + '</b>' : '') +
+                   (p.costoHa ? ' <span class="tenue">(' + h(F.catalogos.moneda) + ' ' + h(p.costoHa) + '/ha)</span>' : '');
+          }).join('<br>') : '<span class="tenue">sin productos</span>') + '</td>' +
+          '<td class="num">' + (t.areaHa ? numero(t.areaHa, 4) + ' ha' : '—') + '</td>' +
+          (puede('editar') ? '<td><button class="sec chico" data-prod="' + h(t.id) + '">Productos</button></td>' : '') +
+          '</tr>'; }).join('') + '</table></div>' +
       '<h2>Lotes</h2><div class="lotes">' + F.lotes.map(function(l){
         return '<div class="lote' + (l.rol === 'TESTIGO' ? ' testigo' : '') + '"><div class="cab"><b>' + h(l.lote) + '</b><span class="chip">' + h(l.rol) + '</span></div>' +
           '<div class="datos">' + dato('Finca', l.finca) + dato('Zona', l.zona) + dato('Sector', l.desc) + dato('Variedad', l.variedad) +
@@ -1374,6 +1563,7 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       }).join('') + '</div>' +
       (e.carpeta ? '<p class="guia" style="margin-top:16px"><a href="' + h(e.carpeta) + '" target="_blank" rel="noopener">Carpeta del ensayo en Drive</a></p>' : '');
     if ($('rEditar')) $('rEditar').onclick = editar;
+    al('[data-prod]', 'click', function(b){ editarProductos(b.dataset.prod); }, c);
   }
 
   function editar(){
@@ -1384,20 +1574,24 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       '<label>Objetivo</label><textarea id="eObj" rows="2">' + h(e.objetivo) + '</textarea>' +
       '<div class="fila"><div><label>Estado</label><select id="eEstado">' + opciones(F.catalogos.estados, e.estado) + '</select></div>' +
       '<div><label>Surcos de borde</label><input id="eSurcos" type="number" min="0" value="' + h(e.surcosBorde) + '"></div></div>' +
+      '<div class="fila"><div><label>Área de parcela (ha)</label><input id="eArea" type="number" step="0.0001" min="0" value="' + h(e.areaParcelaHa) + '"></div>' +
+      '<div><label>Distancia entre surcos (m)</label><input id="eDist" type="number" step="0.01" min="0" value="' + h(e.distSurcos) + '"></div></div>' +
       '<div class="fila"><div><label>Fecha de aplicación</label><input id="eFecha" type="date" value="' + h(e.aplicacionISO) + '"></div>' +
       '<div><label>Cosecha estimada</label><input id="eCos" type="date" value="' + h(e.cosechaISO) + '"></div></div>' +
-      '<div class="fila"><div><label>Equipo</label><select id="eEquipo">' + opciones(F.catalogos.equipos, e.equipo, '—') + '</select></div>' +
+      '<div class="fila"><div><label>Equipo</label>' + selectEquipos('eEquipo', F.catalogos.equipos, e.equipo) + '</div>' +
       '<div><label>¿Llega a cosecha?</label><select id="eLlega">' + opciones(['SI', 'NO'], e.llegaACosecha || 'SI') + '</select></div></div>' +
       '<div class="fila"><div><label>Responsable</label><input id="eResp" value="' + h(e.responsable) + '"></div>' +
       '<div><label>Correo para avisos</label><input id="eEmail" value="' + h(e.email) + '"></div></div>' +
       '<p class="guia" style="margin-top:10px">Si cambia la fecha de aplicación, las tareas pendientes se mueven solas. ' +
+      'El área de la parcela vuelve a calcular el área del ensayo, salvo en las parcelas que ya tienen polígono. ' +
       'Los cambios de fecha, estado y surcos quedan anotados en la bitácora.</p>' +
       '<div class="acciones"><button id="eGuardar">Guardar</button></div>');
     $('eGuardar').onclick = function(){
       var b = this; b.disabled = true;
       api('guardarEnsayo', id, { nombre: val('eNombre'), descripcion: val('eDesc'), objetivo: val('eObj'), estado: val('eEstado'),
-        surcosBorde: val('eSurcos'), aplicacionISO: val('eFecha'), cosechaISO: val('eCos'), equipo: val('eEquipo'),
-        llegaACosecha: val('eLlega'), responsable: val('eResp'), email: val('eEmail') })
+        surcosBorde: val('eSurcos'), areaParcelaHa: val('eArea'), distSurcos: val('eDist'),
+        aplicacionISO: val('eFecha'), cosechaISO: val('eCos'), equipo: val('eEquipo'),
+        llevaACosecha: val('eLlega'), responsable: val('eResp'), email: val('eEmail') })
         .then(function(r){ v.cerrar(); msg(h(r.mensaje), 'ok'); cargar(); })
         .catch(function(e){ b.disabled = false; fallo(e); });
     };
@@ -1645,6 +1839,243 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       }).then(function(r){ F.archivos = r.archivos; msg(h(r.mensaje), 'ok'); pArchivos(c); }).catch(function(e){ b.disabled = false; fallo(e); });
     };
     cablearArchivos(c, function(r){ F.archivos = r.archivos; pArchivos(c); });
+  }
+
+  /* ------------------------- productos del tratamiento ------------------------- */
+  function editarProductos(idTrat){
+    var t = F.tratamientos.filter(function(x){ return x.id === idTrat; })[0];
+    if (!t) return;
+    var lista = t.productos.length ? t.productos.slice() : [{}];
+    var v = ventana('Productos de ' + t.codigo,
+      '<p class="guia">Un tratamiento puede llevar los productos que haga falta. El precio es por litro o por ' +
+      'kilo del producto, y se escribe en gabinete, cuando ya se tiene el dato exacto: con él y la dosis ' +
+      'el módulo calcula lo que cuesta el tratamiento por hectárea.</p>' +
+      '<div id="epLista"></div><div class="acciones"><button class="sec chico" id="epMas">Agregar producto</button></div>' +
+      '<p class="guia" id="epTotal"></p>' +
+      '<div class="acciones"><button id="epGuardar">Guardar</button></div>');
+
+    function leer(){
+      lista = $$('.prod', v.el).map(function(p){
+        return { producto: p.querySelector('.pProd').value.trim(), dosis: p.querySelector('.pDosis').value.trim(),
+                 unidad: p.querySelector('.pUnidad').value, costo: p.querySelector('.pCosto').value.trim() };
+      });
+      return lista;
+    }
+    function pintar(){
+      $('epLista').innerHTML =
+        '<label>Producto, dosis por hectárea y precio (' + h(F.catalogos.moneda) + ' por litro o kilo)</label>' +
+        lista.map(function(p, j){
+          return '<div class="fila prod" style="gap:6px;margin-bottom:6px">' +
+            '<div style="flex:3 1 150px"><input class="pProd" list="epProductos" placeholder="Producto" value="' + h(p.producto || '') + '"></div>' +
+            '<div style="flex:1 1 76px"><input class="pDosis" type="number" inputmode="decimal" step="any" min="0" placeholder="Dosis" value="' + h(p.dosis === undefined ? '' : p.dosis) + '"></div>' +
+            '<div style="flex:1 1 96px"><select class="pUnidad">' + opciones(F.catalogos.unidades, p.unidad || 'L/ha') + '</select></div>' +
+            '<div style="flex:1 1 110px"><input class="pCosto" type="number" inputmode="decimal" step="any" min="0" placeholder="Precio" value="' + h(p.costo === undefined ? '' : p.costo) + '"></div>' +
+            '<div style="flex:0 0 38px"><button class="icono" data-quitar-p="' + j + '">×</button></div></div>';
+        }).join('') +
+        (F.catalogos.productos.length ? '<datalist id="epProductos">' + opciones(F.catalogos.productos) + '</datalist>' : '');
+      al('[data-quitar-p]', 'click', function(b){ leer(); lista.splice(Number(b.dataset.quitarP), 1); pintar(); }, v.el);
+      al('.prod input, .prod select', 'input', total, v.el);
+      total();
+    }
+    function total(){
+      var t2 = 0;
+      $$('.prod', v.el).forEach(function(p){
+        var d = Number(p.querySelector('.pDosis').value), q = Number(p.querySelector('.pCosto').value);
+        var u = UNIDAD_FACTOR[p.querySelector('.pUnidad').value] || 1;
+        if (d > 0 && q > 0) t2 += d * u * q;
+      });
+      $('epTotal').textContent = t2 ? 'Productos: ' + F.catalogos.moneda + ' ' + numero(t2, 2) + ' por hectárea' : '';
+    }
+    $('epMas').onclick = function(){ leer(); lista.push({}); pintar(); };
+    $('epGuardar').onclick = function(){
+      var b = this; b.disabled = true;
+      api('guardarProductos', id, idTrat, leer().filter(function(p){ return p.producto; }))
+        .then(function(r){ v.cerrar(); msg(h(r.mensaje), 'ok'); cargar(); })
+        .catch(function(e){ b.disabled = false; fallo(e); });
+    };
+    pintar();
+  }
+
+  /* -------------------------------- costos -------------------------------- */
+  function pCostos(c){
+    var k = F.costos, m = k.moneda;
+    var orden = Object.keys(k.conceptos).sort(function(a, b){ return k.conceptos[a].orden - k.conceptos[b].orden; });
+    c.innerHTML =
+      '<p class="guia">Los costos se registran aquí, en gabinete, no al establecer el ensayo: primero el precio de ' +
+      'los productos de cada tratamiento y después lo que se vaya gastando (arranque, segunda aplicación, foqueo). ' +
+      'Todo se lleva a ' + h(m) + ' por hectárea, que es como se comparan los tratamientos entre sí.</p>' +
+      (k.sinCosto ? '<div class="aviso-barra">Falta el precio de ' + k.sinCosto + ' producto' +
+        (k.sinCosto === 1 ? '' : 's') + '. Mientras no se escriba, el costo de la aplicación queda en blanco.</div>' : '') +
+      (puede('editar') ? '<div class="acciones" style="margin:0 0 10px">' +
+        k.tratamientos.filter(function(t){ return t.nProductos; }).map(function(t){
+          return '<button class="sec chico" data-precio="' + h(t.id) + '">Precio de los productos de ' + h(t.codigo) +
+            (t.sinCosto ? ' <span class="chip rojo">falta</span>' : '') + '</button>';
+        }).join('') + '</div>' : '') +
+      '<div class="acciones" style="margin:0 0 14px"><button id="kNuevo">Registrar un costo</button></div>' +
+      '<div class="tabla-env"><table class="tabla"><tr><th>Tratamiento</th>' +
+        orden.map(function(x){ return '<th class="num">' + h(k.conceptos[x].nombre) + '</th>'; }).join('') +
+        '<th class="num">Total ' + h(m) + '/ha</th><th class="num">Área</th><th class="num">Total ' + h(m) + '</th>' +
+        '<th class="num">Contra el testigo</th></tr>' +
+      k.tratamientos.map(function(t){
+        return '<tr><td class="mono trat-td"><b>' + h(t.codigo) + '</b>' + (t.testigo ? '<br><span class="chip">testigo</span>' : '') +
+          '<span class="sub">' + h(t.productosTexto || t.descripcion) + '</span></td>' +
+          orden.map(function(x){
+            return '<td class="num costo-td">' + (t.conceptos[x] ? numero(t.conceptos[x], 2)
+              : (x === 'PRODUCTO' && t.sinCosto ? '<span class="tenue">falta</span>' : '—')) + '</td>';
+          }).join('') +
+          '<td class="num costo-td"><b>' + numero(t.costoHa, 2) + '</b></td>' +
+          '<td class="num">' + (t.areaHa ? numero(t.areaHa, 4) + ' ha' : '—') + '</td>' +
+          '<td class="num costo-td">' + (t.costoTotal ? numero(t.costoTotal, 2) : '—') + '</td>' +
+          '<td class="num costo-td">' + (t.contraTestigo === null ? '—' :
+            (t.contraTestigo > 0 ? '+' : '') + numero(t.contraTestigo, 2)) + '</td></tr>';
+      }).join('') + '</table></div>' +
+      '<h3>Registros</h3>' +
+      (k.tratamientos.some(function(t){ return t.detalle.length; })
+        ? '<div class="tabla-env"><table class="tabla"><tr><th>Tratamiento</th><th>Concepto</th><th>Fecha</th>' +
+          '<th>Descripción</th><th class="num">Monto</th><th class="num">' + h(m) + '/ha</th><th></th></tr>' +
+          k.tratamientos.map(function(t){
+            return t.detalle.map(function(d){
+              return '<tr><td class="mono">' + h(t.codigo) + '</td><td>' + h(d.conceptoNombre) + '</td>' +
+                '<td class="mono">' + h(d.fecha) + '</td><td>' + h(d.descripcion) +
+                '<span class="sub">' + h(d.por) + '</span></td>' +
+                '<td class="num costo-td">' + h(m) + ' ' + numero(d.monto, 2) + (d.base === 'HA' ? '/ha' : '') + '</td>' +
+                '<td class="num costo-td">' + numero(d.costoHa, 2) + '</td>' +
+                '<td><button class="icono" data-borrar-costo="' + h(d.id) + '" title="Eliminar">×</button></td></tr>';
+            }).join('');
+          }).join('') + '</table></div>'
+        : '<p class="vacio">Todavía no hay costos registrados aparte de los productos.</p>');
+
+    $('kNuevo').onclick = function(){ formularioCosto(); };
+    al('[data-precio]', 'click', function(b){ editarProductos(b.dataset.precio); }, c);
+    al('[data-borrar-costo]', 'click', function(b){
+      if (!confirm('¿Eliminar este costo?')) return;
+      api('eliminarCosto', id, b.dataset.borrarCosto).then(function(r){ F.costos = r.costos; msg(h(r.mensaje), 'ok'); pCostos(c); }).catch(fallo);
+    }, c);
+  }
+
+  function formularioCosto(){
+    var k = F.costos;
+    var conceptos = Object.keys(k.conceptos).filter(function(x){ return x !== 'PRODUCTO'; })
+      .map(function(x){ return { v: x, t: k.conceptos[x].nombre }; });
+    var v = ventana('Registrar un costo',
+      '<div class="fila"><div><label>Tratamiento</label><select id="kTrat">' +
+        opciones(k.tratamientos.map(function(t){ return { v: t.id, t: t.codigo + ' · ' + (t.descripcion || t.productosTexto) }; })) + '</select></div>' +
+      '<div><label>Concepto</label><select id="kConcepto">' + opciones(conceptos) + '</select></div></div>' +
+      '<div class="fila"><div><label>Fecha</label><input id="kFecha" type="date" value="' + fechaHoyISO() + '"></div>' +
+      '<div><label>Monto (' + h(k.moneda) + ')</label><input id="kMonto" type="number" step="any" min="0"></div>' +
+      '<div><label>El monto es</label><select id="kBase">' +
+        opciones([{ v: 'HA', t: 'por hectárea' }, { v: 'TOTAL', t: 'el total del tratamiento' }], 'HA') + '</select></div></div>' +
+      '<label>Descripción</label><input id="kDesc" placeholder="Ej.: jornales de arranque, 2 personas por parcela">' +
+      '<p class="guia" id="kAviso"></p>' +
+      '<div class="acciones"><button id="kGuardar">Guardar</button></div>');
+    function aviso(){
+      var t = k.tratamientos.filter(function(x){ return x.id === val('kTrat'); })[0];
+      var monto = Number(val('kMonto'));
+      if (!t || !monto) return $('kAviso').textContent = '';
+      $('kAviso').textContent = val('kBase') === 'TOTAL'
+        ? (t.areaHa ? 'Son ' + k.moneda + ' ' + numero(monto / t.areaHa, 2) + ' por hectárea en ' + numero(t.areaHa, 4) + ' ha.'
+                    : 'Ese tratamiento todavía no tiene área: registre el área de parcela para repartir el costo.')
+        : (t.areaHa ? 'Son ' + k.moneda + ' ' + numero(monto * t.areaHa, 2) + ' en total.' : '');
+    }
+    ['kTrat', 'kMonto', 'kBase'].forEach(function(x){ $(x).oninput = aviso; $(x).onchange = aviso; });
+    $('kGuardar').onclick = function(){
+      var b = this; b.disabled = true;
+      api('guardarCosto', id, { idTrat: val('kTrat'), concepto: val('kConcepto'), fecha: val('kFecha'),
+                                monto: val('kMonto'), base: val('kBase'), descripcion: val('kDesc') })
+        .then(function(r){ v.cerrar(); msg(h(r.mensaje), 'ok'); cargar(); })
+        .catch(function(e){ b.disabled = false; fallo(e); });
+    };
+  }
+
+  /* ------------------------------- malezas ------------------------------- */
+  function pMalezas(c){
+    c.innerHTML = '<div class="cargando">Leyendo los muestreos de cobertura…</div>';
+    api('malezas', id).then(function(r){
+      if (!r.hay) return c.innerHTML = '<p class="vacio">Todavía no hay muestreos de cobertura de malezas.</p>';
+      c.innerHTML =
+        '<p class="guia">La cobertura es cuánta maleza hay; el control es lo que quedó limpio. De esa maleza se reparte ' +
+        'el 100 % entre las especies encontradas: la que más pesa es el escape que hay que atender en el siguiente control.</p>' +
+        (r.escapes.length ? '<h3>Escapes del ensayo</h3><div class="tabla-env" style="margin-bottom:16px">' +
+          '<table class="tabla"><tr><th>Especie</th><th class="num">Cobertura media del área</th></tr>' +
+          r.escapes.map(function(x){
+            return '<tr><td>' + h(x.especie) + '</td><td class="num">' + numero(x.area, 2) + ' %</td></tr>';
+          }).join('') + '</table></div>' : '') +
+        r.fechas.map(function(f){
+          return '<h3>' + h(f.fecha) + (f.dda !== null ? ' · ' + f.dda + ' DDA' : '') + '</h3>' +
+            '<div class="tabla-env" style="margin-bottom:14px"><table class="tabla">' +
+            '<tr><th>Tratamiento</th><th class="num">Cobertura</th><th class="num">Control</th><th>Escapes (% de la maleza)</th></tr>' +
+            f.tratamientos.map(function(t){
+              return '<tr><td class="mono"><b>' + h(t.trat) + '</b><span class="sub">' + t.n + ' parcelas</span></td>' +
+                '<td class="num">' + (t.cobertura === null ? '—' : numero(t.cobertura, 1) + ' %') + '</td>' +
+                '<td class="num"><b>' + (t.control === null ? '—' : numero(t.control, 1) + ' %') + '</b></td>' +
+                '<td>' + (t.escapes.length ? t.escapes.map(function(x){
+                  return h(x.especie) + ' <b>' + numero(x.pct, 0) + ' %</b>';
+                }).join('<br>') : '<span class="tenue">sin especies anotadas</span>') + '</td></tr>';
+            }).join('') + '</table></div>';
+        }).join('');
+    }).catch(function(e){ c.innerHTML = '<p class="vacio">' + h(e.message) + '</p>'; });
+  }
+
+  /* ------------------------------- entregas ------------------------------- */
+  function pEntregas(c){
+    var pendientes = F.tareas.filter(function(t){
+      return ['PENDIENTE', 'AVISADO'].indexOf(t.estado) >= 0 && /entrega|precosecha|sig/i.test(t.desc);
+    });
+    var utiles = F.archivos.filter(function(a){
+      return ['PUNTOS_MUESTREO', 'SHP_PARCELAS', 'MAPA', 'OTRO'].indexOf(a.tipo) >= 0;
+    });
+    c.innerHTML =
+      '<p class="guia">El muestreo de precosecha lo hace el departamento de SIG. Aquí se le mandan los puntos de muestreo ' +
+      'propuestos, el shapefile de los tratamientos y el mapa del ensayo; cuando devuelvan los datos, se marca la entrega.</p>' +
+      (puede('editar') ? '<div class="acciones" style="margin:0 0 14px"><button id="enNuevo">Preparar una entrega</button>' +
+        (utiles.length ? '' : '<span class="tenue">Primero suba los archivos en la pestaña Archivos.</span>') + '</div>' : '') +
+      (pendientes.length ? '<div class="aviso-barra">' + pendientes.length + ' entrega(s) pendientes: ' +
+        pendientes.map(function(t){ return h(t.fecha); }).join(', ') + '</div>' : '') +
+      (F.entregas.length ? F.entregas.map(function(x){
+        return '<div class="nota" style="margin-left:0"><div class="cab"><b>' + h(x.actividad) + '</b>' +
+          chipEstado(x.estado) + '<span>' + (x.envio ? 'enviada el ' + h(x.envio) : 'programada ' + h(x.programada)) +
+          (x.enviadoA ? ' · a ' + h(x.enviadoA) : '') + ' · ' + h(x.por) + '</span></div>' +
+          (x.archivos.length ? '<p>' + x.archivos.map(function(a){
+            return '<a href="' + h(a.url) + '" target="_blank" rel="noopener">' + h(a.titulo) + '</a>';
+          }).join(' · ') + '</p>' : '') +
+          (x.nota ? '<p class="tenue">' + h(x.nota) + '</p>' : '') +
+          (x.datos ? '<p class="tenue">Datos recibidos el ' + h(x.datos) + '.</p>'
+                   : (puede('editar') ? '<div class="acciones" style="margin-top:8px">' +
+                      '<button class="sec chico" data-datos="' + h(x.id) + '">Marcar datos recibidos</button></div>' : '')) +
+          '</div>';
+      }).join('') : '<p class="vacio">Todavía no se ha enviado ninguna entrega.</p>');
+
+    if ($('enNuevo')) $('enNuevo').onclick = function(){ formularioEntrega(pendientes, utiles); };
+    al('[data-datos]', 'click', function(b){
+      api('entregaConDatos', id, b.dataset.datos, '').then(function(r){ F.entregas = r.entregas; msg(h(r.mensaje), 'ok'); pEntregas(c); }).catch(fallo);
+    }, c);
+  }
+
+  function formularioEntrega(pendientes, utiles){
+    if (!utiles.length) return msg('Suba primero los archivos en la pestaña Archivos (puntos de muestreo, parcelas y mapa).', 'err');
+    var v = ventana('Enviar al departamento de SIG',
+      (pendientes.length ? '<label>Entrega programada</label><select id="enTarea">' +
+        opciones(pendientes.map(function(t){ return { v: t.id, t: t.fecha + ' · ' + t.desc }; }), '', 'sin enlazar a una tarea') + '</select>' : '') +
+      '<label>Archivos que se envían</label><div class="casillas" style="flex-direction:column;align-items:flex-start">' +
+        utiles.map(function(a){
+          var pre = ['PUNTOS_MUESTREO', 'SHP_PARCELAS', 'MAPA'].indexOf(a.tipo) >= 0;
+          return '<label class="casilla"><input type="checkbox" class="enArch" value="' + h(a.id) + '"' + (pre ? ' checked' : '') + '>' +
+            h(a.titulo) + ' <span class="tenue">· ' + h(a.tipo) + '</span></label>';
+        }).join('') + '</div>' +
+      '<label>Correos del SIG</label><input id="enCorreos" placeholder="vacío = los contactos con rol SIG">' +
+      '<label>Nota</label><textarea id="enNota" rows="2" placeholder="Algo que deban saber para el muestreo"></textarea>' +
+      '<div class="acciones"><button id="enEnviar">Enviar</button></div>');
+    $('enEnviar').onclick = function(){
+      var b = this;
+      var arch = $$('.enArch:checked', v.el).map(function(i){ return i.value; });
+      if (!arch.length) return msg('Marque al menos un archivo.', 'err');
+      b.disabled = true; msg('Enviando…', 'info');
+      var tarea = $('enTarea') ? val('enTarea') : '';
+      api('enviarEntrega', id, { idTarea: tarea, archivos: arch, enviarA: val('enCorreos'), nota: val('enNota'),
+                                 actividad: (pendientes.filter(function(t){ return t.id === tarea; })[0] || {}).desc || '' })
+        .then(function(r){ v.cerrar(); msg(h(r.mensaje), 'ok', true); cargar(); })
+        .catch(function(e){ b.disabled = false; fallo(e); });
+    };
   }
 
   /* ----------------------------- resultados ----------------------------- */
@@ -2102,8 +2533,11 @@ function campoEnsayo(id){
       '<div class="campo">' +
         (paq.deCopia ? '<div class="aviso-barra" style="margin:0;border-radius:0">Sin señal: usando lo descargado ' + haceCuanto(paq.deCopia) + '.</div>' : '') +
         '<div class="selector"><select id="cPlan">' + (planes.length ? planes.map(function(p, i){
+          var det = p.formulario === 'COBERTURA' ? 'cobertura y escapes'
+                  : p.formulario === 'COSECHA_CANA' ? 'longitud, nota de envío y equipos'
+                  : p.variables.map(function(v){ return v.nombre; }).join(', ');
           return '<option value="' + i + '"' + (p === S.plan ? ' selected' : '') + '>' + h(p.actividad) + ' · ' +
-            h(p.variables.map(function(v){ return v.nombre; }).join(', ')) + '</option>'; }).join('') : '<option>Sin plan de muestreo</option>') +
+            h(det) + '</option>'; }).join('') : '<option>Sin plan de muestreo</option>') +
         '</select><div class="avance" id="cAvance"></div></div>' +
         '<div class="pestanas"><button class="on" data-p="mapa">Mapa</button><button data-p="lista">Lista</button>' +
           '<button data-p="info">Ensayo</button></div>' +
@@ -2177,68 +2611,188 @@ function campoEnsayo(id){
     $('cActualizar').onclick = function(){ Paquetes.olvidar(id); reemplazar(function(){ campoEnsayo(id); }); };
   }
 
+  /** Formulario de la parcela. Cada actividad tiene el suyo. */
   function abrirHoja(p){
     if (!p) return;
     if (!S.plan) return msg('Este ensayo no tiene actividades de muestreo.', 'info');
     S.parcela = p;
+    var form = S.plan.formulario || 'VARIABLES';
     var ya = S.hechas[clave(p.id)];
-    var esCosecha = S.plan.tipo === 'COSECHA';
+    var cuerpoForm = form === 'COBERTURA' ? formCobertura() : form === 'COSECHA_CANA' ? formCosecha() : formVariables();
+
     $('cHoja').innerHTML = '<div class="agarre"></div><div class="cab"><div class="txt"><b>Parcela ' + h(p.num) + '</b>' +
-      '<span>' + h(p.trat) + (p.bloque ? ' · bloque ' + h(p.bloque) : '') + (p.areaHa ? ' · ' + h(p.areaHa) + ' ha' : '') + '</span></div>' +
+      '<span>' + h(p.trat) + (p.bloque ? ' · bloque ' + h(p.bloque) : '') +
+      (p.areaHa ? ' · ' + numero(p.areaHa, 4) + ' ha' : '') + '</span></div>' +
       '<button class="icono" id="hCerrar">×</button></div>' +
       (ya ? '<div class="ya">Esta parcela ya tiene datos de hoy. Si guarda otra vez se agrega otra medición.</div>' : '') +
-      '<div class="tenue" style="font-size:13px;margin-top:8px">' + h(S.plan.actividad) + (S.plan.submuestras ? ' · ' + h(S.plan.submuestras) + ' submuestras: anote el promedio' : '') + '</div>' +
-      S.plan.variables.map(function(v, i){
-        return '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
-          '<input type="number" inputmode="decimal" step="any" data-var="' + i + '" autocomplete="off">';
-      }).join('') +
+      '<div class="tenue" style="font-size:13px;margin-top:8px">' + h(S.plan.actividad) +
+        (S.plan.submuestras ? ' · ' + h(S.plan.submuestras) + ' submuestras: anote el promedio' : '') + '</div>' +
+      cuerpoForm +
       '<label>Observación (opcional, va a la bitácora)</label><input id="hObs" placeholder="Algo que deba saberse de esta parcela">' +
       '<div class="botones"><button class="sec" id="hSig">Siguiente</button><button id="hGuardar">Guardar</button></div>';
     $('cHoja').className = 'hoja abierta';
-    var primero = $('cHoja').querySelector('[data-var]');
-    if (primero) setTimeout(function(){ primero.focus(); }, 150);
+
     $('hCerrar').onclick = cerrarHoja;
     $('hSig').onclick = function(){ siguiente(p); };
-    $('hGuardar').onclick = function(){ guardar(p, esCosecha); };
+    $('hGuardar').onclick = function(){ guardar(p, form); };
+    if (form === 'COBERTURA') cablearCobertura();
+    if (form === 'COSECHA_CANA') cablearCosecha();
+    var primero = $('cHoja').querySelector('input:not([type=button])');
+    if (primero) setTimeout(function(){ primero.focus(); }, 150);
     al('[data-var]', 'keydown', function(i, ev){
       if (ev.key !== 'Enter') return;
       var sig = $('cHoja').querySelector('[data-var="' + (Number(i.dataset.var) + 1) + '"]');
-      sig ? sig.focus() : guardar(p, esCosecha);
+      sig ? sig.focus() : guardar(p, form);
     }, $('cHoja'));
   }
+
+  function formVariables(){
+    return S.plan.variables.map(function(v, i){
+      return '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
+        '<input type="number" inputmode="decimal" step="any" data-var="' + i + '" autocomplete="off">';
+    }).join('');
+  }
+
+  /**
+   * Cobertura de malezas: cuánta maleza hay (el control es lo que queda
+   * limpio) y de qué está hecha esa maleza, que es el escape.
+   */
+  function formCobertura(){
+    return '<label>Cobertura de maleza (%)</label>' +
+      '<input id="hCob" type="number" inputmode="decimal" step="any" min="0" max="100" autocomplete="off">' +
+      '<div class="ya" id="hControl" style="background:var(--verde-tenue);color:var(--verde)">Escriba la cobertura</div>' +
+      '<label>De esa maleza, ¿qué especies son? (suma 100 %)</label>' +
+      '<div id="hEspecies"></div>' +
+      '<div class="acciones" style="margin-top:6px"><button class="sec chico" id="hMasEsp">Agregar especie</button>' +
+      '<span class="tenue" id="hSuma"></span></div>';
+  }
+
+  function cablearCobertura(){
+    var lista = [{}];
+    function pintar(){
+      $('hEspecies').innerHTML = lista.map(function(x, i){
+        return '<div class="fila esp" style="gap:6px;margin-bottom:6px"><div style="flex:2 1 140px">' +
+          '<input class="eNom" list="hMalezas" placeholder="Especie" value="' + h(x.especie || '') + '"></div>' +
+          '<div style="flex:0 0 92px"><input class="ePct" type="number" inputmode="decimal" step="any" min="0" max="100" ' +
+          'placeholder="%" value="' + h(x.pct || '') + '"></div>' +
+          '<div style="flex:0 0 38px"><button class="icono" data-quitar-e="' + i + '">×</button></div></div>';
+      }).join('') + (S.paq.malezas.length ? '<datalist id="hMalezas">' + opciones(S.paq.malezas) + '</datalist>' : '');
+      al('[data-quitar-e]', 'click', function(b){ leer(); lista.splice(Number(b.dataset.quitarE), 1); if (!lista.length) lista = [{}]; pintar(); }, $('hEspecies'));
+      al('.esp input', 'input', suma, $('hEspecies'));
+      suma();
+    }
+    function leer(){
+      lista = $$('.esp', $('cHoja')).map(function(d){
+        return { especie: d.querySelector('.eNom').value.trim(), pct: d.querySelector('.ePct').value.trim() };
+      });
+      return lista;
+    }
+    function suma(){
+      var t = leer().reduce(function(a, x){ return a + (Number(x.pct) || 0); }, 0);
+      $('hSuma').textContent = t ? 'Suma ' + numero(t, 0) + ' %' + (Math.abs(t - 100) > 2 ? ' — debería sumar 100' : ' ✓') : '';
+      $('hSuma').style.color = t && Math.abs(t - 100) > 2 ? 'var(--error)' : 'var(--tenue)';
+    }
+    $('hMasEsp').onclick = function(){ leer(); lista.push({}); pintar(); };
+    $('hCob').oninput = function(){
+      var c = Number(this.value);
+      $('hControl').textContent = this.value === '' ? 'Escriba la cobertura'
+        : (c >= 0 && c <= 100 ? 'Control: ' + numero(100 - c, 1) + ' % del área quedó limpia' : 'La cobertura va de 0 a 100 %');
+    };
+    pintar();
+  }
+
+  /** Cosecha: lo que se cortó de forma lineal, la nota de envío y los equipos. */
+  function formCosecha(){
+    var eq = S.paq.equiposCosecha || [];
+    var de = function(tipo){ return eq.filter(function(q){ return q.tipo === tipo; })
+      .map(function(q){ return q.codigo + (q.desc ? ' · ' + q.desc : ''); }); };
+    function campo(id, etiqueta, tipo){
+      var l = de(tipo);
+      return '<label>' + etiqueta + '</label><input id="' + id + '"' + (l.length ? ' list="dl' + id + '"' : '') +
+        ' autocomplete="off">' + (l.length ? '<datalist id="dl' + id + '">' + opciones(l) + '</datalist>' : '');
+    }
+    return '<label>Longitud cosechada (m)</label>' +
+      '<input id="hLargo" type="number" inputmode="decimal" step="any" min="0" autocomplete="off">' +
+      '<div class="ya" id="hArea" style="background:var(--verde-tenue);color:var(--verde)">' +
+        'A ' + numero(S.paq.ensayo.distSurcos || 1.5, 2) + ' m entre surcos</div>' +
+      '<label>No. de nota de envío</label><input id="hNota" autocomplete="off">' +
+      campo('hCabezal', 'Código del cabezal', 'CABEZAL') +
+      campo('hEquipo', 'Código del equipo', 'COSECHADORA') +
+      campo('hAlzadora', 'Código de la alzadora', 'ALZADORA') +
+      '<label>Peso (kg, si ya se tiene)</label><input id="hPeso" type="number" inputmode="decimal" step="any" min="0">' +
+      '<label>Humedad (%)</label><input id="hHum" type="number" inputmode="decimal" step="any" min="0" max="100">';
+  }
+
+  function cablearCosecha(){
+    $('hLargo').oninput = function(){
+      var m = Number(this.value), d = Number(S.paq.ensayo.distSurcos) || 1.5;
+      $('hArea').textContent = m > 0
+        ? 'Área cosechada: ' + numero(m * d, 1) + ' m² (' + numero(m * d / 10000, 4) + ' ha) a ' + numero(d, 2) + ' m entre surcos'
+        : 'A ' + numero(d, 2) + ' m entre surcos';
+    };
+  }
+
   function cerrarHoja(){ $('cHoja').className = 'hoja'; S.parcela = null; }
 
-  function guardar(p, esCosecha){
-    var valores = $$('[data-var]', $('cHoja')).map(function(i){ return { v: S.plan.variables[Number(i.dataset.var)], valor: i.value.trim() }; })
-      .filter(function(x){ return x.valor !== ''; });
+  function guardar(p, form){
     var obs = val('hObs');
-    if (!valores.length && !obs) return msg('Escriba al menos un valor.', 'err');
-    var malo = valores.filter(function(x){ return isNaN(Number(x.valor.replace(',', '.'))); })[0];
-    if (malo) return msg(h(malo.v.nombre) + ' debe ser un número.', 'err');
-
     var ahora = new Date(), base = { idEnsayo: id, idParcela: p.id, idPlan: S.plan.id, actividad: S.plan.actividad,
       fecha: ahora.toISOString(), fechaLocal: fechaHoyISO(), lat: S.mapa && S.mapa.ultima ? S.mapa.ultima.lat : '',
       lon: S.mapa && S.mapa.ultima ? S.mapa.ultima.lon : '' };
-    var items = [];
-    if (esCosecha) {
-      var peso = valores.filter(function(x){ return /peso|kg/i.test(x.v.nombre + x.v.unidad); })[0];
-      var hum = valores.filter(function(x){ return /humedad/i.test(x.v.nombre); })[0];
-      if (peso) items.push(Object.assign({ uuid: uuid(), tipo: 'COSECHA', peso: peso.valor.replace(',', '.'), humedad: hum ? hum.valor : '', obs: obs }, base));
-      valores.filter(function(x){ return x !== peso && x !== hum; }).forEach(function(x){
-        items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTREO', variable: x.v.nombre, unidad: x.v.unidad, valor: x.valor.replace(',', '.') }, base));
-      });
+    var items = [], capturado = false;
+
+    if (form === 'COBERTURA') {
+      var cob = val('hCob');
+      if (cob === '') return msg('Escriba la cobertura de maleza.', 'err');
+      if (isNaN(Number(cob)) || Number(cob) < 0 || Number(cob) > 100) return msg('La cobertura va de 0 a 100 %.', 'err');
+      var esp = $$('.esp', $('cHoja')).map(function(d){
+        return { especie: d.querySelector('.eNom').value.trim(), pct: d.querySelector('.ePct').value.trim() };
+      }).filter(function(x){ return x.especie && x.pct !== ''; });
+      var suma = esp.reduce(function(a, x){ return a + Number(x.pct); }, 0);
+      if (Number(cob) > 0 && !esp.length &&
+          !confirm('No anotó ninguna especie. ¿Guardar solo la cobertura?')) return;
+      if (esp.length && Math.abs(suma - 100) > 2 &&
+          !confirm('Las especies suman ' + Math.round(suma) + ' % y deberían sumar 100 %. ¿Guardar así?')) return;
+      items.push(Object.assign({ uuid: uuid(), tipo: 'COBERTURA', cobertura: cob.replace(',', '.'), especies: esp }, base));
+      capturado = true;
+
+    } else if (form === 'COSECHA_CANA') {
+      var largo = val('hLargo');
+      if (largo === '') return msg('Escriba cuántos metros se cosecharon.', 'err');
+      if (isNaN(Number(largo)) || Number(largo) <= 0) return msg('La longitud debe ser un número mayor que cero.', 'err');
+      if (!val('hNota') && !confirm('No anotó la nota de envío. ¿Guardar así?')) return;
+      items.push(Object.assign({ uuid: uuid(), tipo: 'COSECHA', longitud: largo.replace(',', '.'),
+        notaEnvio: val('hNota'), cabezal: codigoDe(val('hCabezal')), equipo: codigoDe(val('hEquipo')),
+        alzadora: codigoDe(val('hAlzadora')), peso: val('hPeso').replace(',', '.'), humedad: val('hHum'), obs: obs }, base));
+      capturado = true;
+
     } else {
+      var valores = $$('[data-var]', $('cHoja')).map(function(i){
+        return { v: S.plan.variables[Number(i.dataset.var)], valor: i.value.trim() };
+      }).filter(function(x){ return x.valor !== ''; });
+      if (!valores.length && !obs) return msg('Escriba al menos un valor.', 'err');
+      var malo = valores.filter(function(x){ return isNaN(Number(x.valor.replace(',', '.'))); })[0];
+      if (malo) return msg(h(malo.v.nombre) + ' debe ser un número.', 'err');
       valores.forEach(function(x){
-        items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTREO', variable: x.v.nombre, unidad: x.v.unidad, valor: x.valor.replace(',', '.') }, base));
+        items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTREO', variable: x.v.nombre, unidad: x.v.unidad,
+                                   valor: x.valor.replace(',', '.') }, base));
       });
+      capturado = valores.length > 0;
     }
-    if (obs) items.push(Object.assign({ uuid: uuid(), tipo: 'NOTA', numParcela: p.num, detalle: S.plan.actividad + ' · parcela ' + p.num + ': ' + obs }, base));
+
+    if (obs && form !== 'COSECHA_CANA') {
+      items.push(Object.assign({ uuid: uuid(), tipo: 'NOTA', numParcela: p.num,
+        detalle: S.plan.actividad + ' · parcela ' + p.num + ': ' + obs }, base));
+    }
     Cola.agregar(items);
-    if (valores.length) S.hechas[clave(p.id)] = true;
+    if (capturado) S.hechas[clave(p.id)] = true;
     refrescar();
     msg('Parcela ' + h(p.num) + ' guardada en el teléfono.', 'ok');
     siguiente(p);
   }
+
+  /** "E-16009 · CONDOR 800" -> "E-16009" */
+  function codigoDe(texto){ return String(texto || '').split('·')[0].trim(); }
 
   function siguiente(p){
     var l = S.paq.parcelas, i = l.indexOf(p);
@@ -2343,8 +2897,9 @@ function vistaConfiguracion(){
         accion('cortes', IC.corte, 'Programa de corte', b.cortes ? b.cortes + ' lotes programados' : 'subir Excel o CSV') +
       '</div></section>' +
       '<section class="seccion"><h2>Catálogos</h2><p class="guia">Lo que cambie aquí queda en la hoja, y lo que cambie en la hoja se ve aquí.</p><div class="rejilla">' +
-        accion('PLANTILLAS', IC.muestreo, 'Muestreos, vuelos y cosecha', n.plantillas + ' actividades con días') +
-        accion('CATALOGOS', IC.lista, 'Tipos, equipos y productos', n.catalogos + ' valores') +
+        accion('PLANTILLAS', IC.muestreo, 'Muestreos, vuelos, cosecha y costos', n.plantillas + ' actividades con días') +
+        accion('EQUIPOS', IC.dron, 'Equipos del ingenio', (n.equipos || 0) + ' aguilones, drones y más') +
+        accion('CATALOGOS', IC.lista, 'Tipos, productos y malezas', n.catalogos + ' valores') +
         accion('CAMPOS', IC.campos, 'Campos de formularios', n.campos + ' campos por departamento') +
         accion('CONTACTOS', IC.contactos, 'Contactos para avisos', n.contactos + ' personas') +
       '</div></section>' +
@@ -2359,6 +2914,7 @@ function vistaConfiguracion(){
       fincas: function(){ ir(vistaFincas); },
       cortes: function(){ ir(vistaCortes); },
       PLANTILLAS: function(){ ir(function(){ vistaTabla('PLANTILLAS'); }); },
+      EQUIPOS: function(){ ir(function(){ vistaTabla('EQUIPOS'); }); },
       CATALOGOS: function(){ ir(function(){ vistaTabla('CATALOGOS'); }); },
       CAMPOS: function(){ ir(function(){ vistaTabla('CAMPOS'); }); },
       CONTACTOS: function(){ ir(function(){ vistaTabla('CONTACTOS'); }); },
@@ -2378,7 +2934,7 @@ function vistaTabla(nombre){
   function pintar(t){
     armazon(t.titulo, 'Configuración');
     cuerpo = $('cuerpo');
-    var colDepto = t.columnas.filter(function(c){ return c.c === 'DEPARTAMENTO' || c.c === 'LINEA'; })[0];
+    var colDepto = t.columnas.filter(function(c){ return c.c === 'DEPARTAMENTO' || c.c === 'LINEA' || c.c === 'TIPO' && nombre === 'EQUIPOS'; })[0];
     var visibles = t.columnas.filter(function(c){ return !c.auto && c.c !== 'ORDEN' && c.c !== 'AYUDA'; }).slice(0, 7);
     cuerpo.innerHTML = '<p class="guia">' + h(t.ayuda) + '</p>' +
       '<div class="filtros"><input id="tTexto" placeholder="Buscar" value="' + h(filtro.texto) + '">' +
