@@ -159,14 +159,48 @@
   .opciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:4px}
   .opcion{background:var(--papel);border:1.5px solid var(--linea);border-radius:12px;padding:14px 12px;font:inherit;
           font-size:14.5px;color:var(--ink);text-align:left;cursor:pointer;transition:all .12s;min-height:52px}
-  .opcion:hover{border-color:var(--verde)}
+  .opcion:hover{border-color:var(--verde);background:var(--papel);color:var(--ink)}
   .opcion.on{background:var(--verde);border-color:var(--verde);color:#fff;font-weight:600}
   .opcion.on:hover{background:var(--verde-hover)}
+  button.peligro{background:var(--error);border-color:var(--error);color:#fff}
+  button.peligro:hover:not([disabled]){background:#9B2D22;border-color:#9B2D22}
+  button.sec.peligro{background:transparent;color:var(--error);border:1px solid var(--rojo-tenue)}
+  button.sec.peligro:hover{background:var(--rojo-tenue)}
   .opcion.chica{min-height:0;padding:7px 14px;font-size:13.5px;border-radius:999px;display:inline-block;width:auto}
   .vuelo-prods{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
   input.grande{font-size:22px;padding:14px 14px;font-weight:600;letter-spacing:-.3px}
   .esp{border:1px solid var(--linea);border-radius:12px;padding:10px 10px 12px;margin-bottom:10px;background:var(--papel)}
   .esp label{margin-top:10px}
+  table.datos10 input{padding:8px 8px;font-size:16px;text-align:center}
+  table.datos10 th:first-child,table.datos10 td:first-child{position:sticky;left:0;background:#fff;z-index:1}
+  table.datos10 th:first-child{background:var(--papel)}
+  table.datos10 td{padding:4px}
+  table.datos10 .opcion.chica{width:100%;text-align:center;padding:8px 4px}
+  .pestanas.chicas{margin:8px 0 2px;border:0}
+  .pestanas.chicas button{font-size:13px;padding:7px 12px;border-radius:999px;background:var(--papel);
+    border:1px solid var(--linea);margin-right:6px}
+  .pestanas.chicas button.on{background:var(--verde);border-color:var(--verde);color:#fff}
+  .opcion.una{min-height:46px}
+  .ayuda-var{margin-top:8px;border:1px solid var(--linea);border-radius:8px;padding:8px 10px;background:var(--papel)}
+  .ayuda-var summary{cursor:pointer;font-size:13px;color:var(--verde);font-weight:600}
+  .ayuda-var .tabla td{font-size:12.5px}
+
+  /* ------- portada ------- */
+  .portada{margin:-4px 0 18px;padding:22px 20px 20px;border-radius:18px;color:#fff;position:relative;overflow:hidden;
+           background:linear-gradient(135deg,#0D9440 0%,#0A7A34 55%,#6E8F14 100%);box-shadow:0 8px 26px rgba(13,148,64,.22)}
+  .portada:after{content:'';position:absolute;right:-50px;top:-60px;width:220px;height:220px;border-radius:50%;
+                 background:rgba(255,255,255,.09)}
+  .portada .saludo{margin:0 0 10px;font-size:14px;opacity:.9}
+  .portada .saludo b{font-weight:700}
+  .portada h1{font-size:26px;line-height:1.15;letter-spacing:-.6px;margin:0}
+  .portada h1 em{display:block;font-style:normal;font-weight:400;font-size:17px;opacity:.92;margin-top:2px}
+  .portada .org{margin:8px 0 0;font-size:12px;text-transform:uppercase;letter-spacing:1.4px;opacity:.85}
+  .resumen-portada{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;position:relative;z-index:1}
+  .resumen-portada span{font-size:12.5px;opacity:.92}
+  .resumen-portada i{display:block;font-style:normal;font-size:22px;font-weight:700;letter-spacing:-.5px}
+  .resumen-portada .rojo{color:#FFD9D4}
+  .depto-tarjeta b{font-size:15.5px}
+  @media (max-width:420px){ .portada h1{font-size:22px} .portada{padding:18px 16px} }
   .accion{background:#fff;border:1px solid var(--linea);border-radius:var(--radio);padding:15px 14px;text-align:left;
     color:var(--ink);box-shadow:var(--sombra);transition:border-color .15s,transform .15s;position:relative;font-weight:400}
   .accion:hover:not([disabled]){background:#fff;border-color:var(--verde);transform:translateY(-1px)}
@@ -1069,8 +1103,13 @@ function inicioSegunRol(){
   ir(vistaInicio);
 }
 
+/**
+ * Portada: lo primero que se ve al entrar. Da la bienvenida, lleva al
+ * tablero general del ingenio y, aparte, a cada departamento, que es donde
+ * está todo lo propio de ese departamento.
+ */
 function vistaInicio(){
-  var cuerpo = armazon('Ingenio Madre Tierra', 'Módulo de ensayos');
+  var cuerpo = armazon('Ingenio Madre Tierra', 'Módulo de ensayos', { portada: true });
   var copia = Local.get('ens_inicio', null);
   if (copia) pintar(copia);
   api('inicio').then(function(r){ Local.set('ens_inicio', r); pintar(r); })
@@ -1085,46 +1124,59 @@ function vistaInicio(){
     var pend = Cola.pendientes().length;
     if (pend) avisos.push('<b>' + pend + ' datos de campo</b> esperan señal para enviarse desde este teléfono.');
 
-    var totales = r.departamentos.reduce(function(a, d){
+    var t = r.departamentos.reduce(function(a, d){
       a.ensayos += d.resumen.ensayos; a.activos += d.resumen.activos;
       a.ha += Number(d.resumen.hectareas) || 0; a.vencidas += d.resumen.vencidas || 0;
+      a.semana += d.resumen.proximas || 0;
       return a;
-    }, { ensayos: 0, activos: 0, ha: 0, vencidas: 0 });
+    }, { ensayos: 0, activos: 0, ha: 0, vencidas: 0, semana: 0 });
 
     cuerpo.innerHTML =
+      '<section class="portada">' +
+        '<p class="saludo">' + h(saludo()) + ', <b>' + h(SESION.nombre.split(' ')[0]) + '</b></p>' +
+        '<h1>Módulo de Ensayos<em>Investigación Agrícola</em></h1>' +
+        '<p class="org">Ingenio Madre Tierra</p>' +
+        '<div class="resumen-portada">' +
+          '<span><i>' + t.activos + '</i> ensayos activos</span>' +
+          '<span><i>' + numero(t.ha, 2) + '</i> hectáreas</span>' +
+          '<span><i>' + t.semana + '</i> esta semana</span>' +
+          (t.vencidas ? '<span class="rojo"><i>' + t.vencidas + '</i> vencidas</span>' : '') +
+        '</div>' +
+      '</section>' +
       avisos.map(function(a){ return '<div class="aviso-barra">' + a + '</div>'; }).join('') +
+      (puede('empresa')
+        ? '<section class="seccion"><div class="tarjetas">' +
+            tarjeta('tablero', IC.tablero, 'Ensayos Ingenio Madre Tierra',
+              'todos los departamentos en un solo tablero: dónde están, qué viene y qué falta',
+              { color: 'verde', ancha: true, badge: t.vencidas ? t.vencidas + ' vencidas' : '' }) +
+          '</div></section>'
+        : '') +
+      '<section class="seccion"><h2>Departamentos</h2>' +
+        '<p class="guia">Aquí adentro está todo lo de cada departamento: sus ensayos, la carga de parcelas, ' +
+        'los muestreos, la cosecha, los costos y su agenda.</p>' +
+        (r.departamentos.length ? '<div class="tarjetas">' + r.departamentos.map(function(d){
+          var x = d.resumen;
+          return '<button class="tarjeta depto-tarjeta" data-depto="' + h(d.id) + '" style="color:' + h(d.color) + '">' +
+            '<i style="background:' + h(d.color) + '1a;color:' + h(d.color) + '">' + (IC[d.id] || IC.capa) + '</i>' +
+            '<b>' + h(d.nombre) + '</b>' +
+            '<span>' + x.activos + ' activos · ' + numero(x.hectareas, 2) + ' ha</span>' +
+            (x.vencidas ? '<em>' + x.vencidas + ' vencidas</em>' : '') + '</button>';
+        }).join('') + '</div>' : '<p class="vacio">Su usuario no tiene departamentos asignados.</p>') +
+      '</section>' +
       '<section class="seccion"><div class="tarjetas">' +
-        (puede('empresa') ? tarjeta('tablero', IC.tablero, 'Ensayos Ingenio Madre Tierra',
-           totales.activos + ' ensayos activos · ' + numero(totales.ha, 2) + ' ha · traslapes y pendientes',
-           { color: 'verde', ancha: true, badge: totales.vencidas ? totales.vencidas + ' vencidas' : '' }) : '') +
-        (puede('capturar') ? tarjeta('campo', IC.campo, 'Muestreo y cosecha', 'mapa y captura en campo, con o sin señal',
+        (puede('capturar') ? tarjeta('campo', IC.campo, 'Muestreo y cosecha', 'captura en campo, con o sin señal',
            { color: 'lima', badge: pend || '' }) : '') +
         (puede('ver') ? tarjeta('tareas', IC.calendario, 'Agenda', 'lo que toca esta semana',
            { color: 'azul', badge: r.vencidas || '' }) : '') +
         (puede('crear') ? tarjeta('nuevo', IC.nuevo, 'Ensayo nuevo', 'establecer un ensayo', { color: 'violeta' }) : '') +
       '</div></section>' +
-      '<section class="seccion"><h2>Departamentos</h2>' +
-        (r.departamentos.length ? r.departamentos.map(function(d){
-          var x = d.resumen;
-          return '<button class="depto" data-depto="' + h(d.id) + '" style="border-left-color:' + h(d.color) + '">' +
-            '<i class="ico" style="background:' + h(d.color) + '1a;color:' + h(d.color) + '">' + (IC[d.id] || IC.capa) + '</i>' +
-            '<span class="txt"><b>' + h(d.nombre) + '</b>' +
-            '<span class="nums"><span><i>' + x.ensayos + '</i> ensayos</span><span><i>' + x.activos + '</i> activos</span>' +
-            '<span><i>' + numero(x.hectareas, 2) + '</i> ha</span>' +
-            (x.vencidas ? '<span class="rojo"><i class="rojo">' + x.vencidas + '</i> vencidas</span>' : '') +
-            (x.proximas ? '<span class="ambar"><i class="ambar">' + x.proximas + '</i> esta semana</span>' : '') +
-            '</span></span><span class="flecha">›</span></button>';
-        }).join('') : '<p class="vacio">Su usuario no tiene departamentos asignados.</p>') +
-      '</section>' +
-      '<section class="seccion"><h2>Próximos 7 días' + (r.vencidas ? ' · ' + r.vencidas + ' vencidas' : '') + '</h2>' +
-        (r.agenda.length ? '<div class="tabla-env"><table class="tabla"><tr><th>Cuándo</th><th>Actividad</th><th>Ensayo</th></tr>' +
-          r.agenda.map(function(t){
-            return '<tr class="clic ' + (t.faltan < 0 ? 'tarde' : t.faltan <= 2 ? 'pronto' : '') + '" data-ens="' + h(t.ensayo) + '">' +
-              '<td class="mono">' + h(t.fecha) + '<br><span class="tenue">' + cuando(t.faltan) + '</span></td>' +
-              '<td>' + h(t.desc) + '</td><td>' + h(t.nombreEnsayo) + '</td></tr>';
-          }).join('') + '</table></div>'
-          : '<p class="vacio">Nada programado para esta semana.</p>') +
-      '</section>';
+      (r.agenda.length ? '<section class="seccion"><h2>Próximos 7 días' + (r.vencidas ? ' · ' + r.vencidas + ' vencidas' : '') + '</h2>' +
+        '<div class="tabla-env"><table class="tabla"><tr><th>Cuándo</th><th>Actividad</th><th>Ensayo</th></tr>' +
+          r.agenda.map(function(x){
+            return '<tr class="clic ' + (x.faltan < 0 ? 'tarde' : x.faltan <= 2 ? 'pronto' : '') + '" data-ens="' + h(x.ensayo) + '">' +
+              '<td class="mono">' + h(x.fecha) + '<br><span class="tenue">' + cuando(x.faltan) + '</span></td>' +
+              '<td>' + h(x.desc) + '</td><td>' + h(x.nombreEnsayo) + '</td></tr>';
+          }).join('') + '</table></div></section>' : '');
 
     rutas(cuerpo, {
       config: function(){ ir(vistaConfiguracion); },
@@ -1141,6 +1193,11 @@ function vistaInicio(){
     al('[data-depto]', 'click', function(b){ ir(function(){ vistaDepartamento(b.dataset.depto); }); }, cuerpo);
     al('[data-ens]', 'click', function(tr){ ir(function(){ vistaEnsayo(tr.dataset.ens); }); }, cuerpo);
   }
+}
+
+function saludo(){
+  var hora = new Date().getHours();
+  return hora < 12 ? 'Buenos días' : hora < 19 ? 'Buenas tardes' : 'Buenas noches';
 }
 </script>
 <script>
@@ -1730,7 +1787,8 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       }).join('; ') + '.</div>' : '') +
       '<div class="acciones" style="margin:0 0 14px">' + chipEstado(e.estado) +
         '<span class="tenue">' + (e.dda !== null ? e.dda + ' días después de la aplicación' : '') + '</span>' +
-        (puede('editar') ? '<button class="sec chico" id="rEditar" style="margin-left:auto">Editar datos</button>' : '') + '</div>' +
+        (puede('editar') ? '<button class="sec chico" id="rEditar" style="margin-left:auto">Editar datos</button>' +
+          '<button class="sec chico peligro" id="rBorrar">Eliminar ensayo</button>' : '') + '</div>' +
       '<div class="ficha">' +
         dato('Departamento', e.deptoNombre) + dato('Tipo', e.tipo) + dato('Zona', e.zonas) + dato('Finca', e.fincas) +
         dato('Lotes', e.lotes) + dato('Variedad', e.variedad) +
@@ -1767,7 +1825,35 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       }).join('') + '</div>' +
       (e.carpeta ? '<p class="guia" style="margin-top:16px"><a href="' + h(e.carpeta) + '" target="_blank" rel="noopener">Carpeta del ensayo en Drive</a></p>' : '');
     if ($('rEditar')) $('rEditar').onclick = editar;
+    if ($('rBorrar')) $('rBorrar').onclick = borrarEnsayo;
     al('[data-prod]', 'click', function(b){ editarProductos(b.dataset.prod); }, c);
+  }
+
+  /**
+   * Borrar es definitivo, así que primero se pide al servidor el detalle de
+   * lo que se va a perder y se escribe el nombre del ensayo para confirmar.
+   */
+  function borrarEnsayo(){
+    api('eliminarEnsayo', id).then(function(r){
+      var v = ventana('Eliminar el ensayo',
+        '<div class="aviso-barra rojo">' + h(r.mensaje) + '</div>' +
+        '<label>Para confirmar, escriba el nombre del ensayo</label>' +
+        '<input id="xNombre" placeholder="' + h(r.nombre) + '" autocomplete="off">' +
+        '<div class="acciones"><button class="peligro" id="xBorrar" disabled>Eliminar para siempre</button>' +
+        '<button class="sec" id="xCancelar">Cancelar</button></div>');
+      $('xCancelar').onclick = function(){ v.cerrar(); };
+      $('xNombre').oninput = function(){
+        $('xBorrar').disabled = this.value.trim().toLowerCase() !== String(r.nombre).trim().toLowerCase();
+      };
+      $('xBorrar').onclick = function(){
+        var b = this; b.disabled = true; msg('Eliminando…', 'info', true);
+        api('eliminarEnsayo', id, true).then(function(x){
+          v.cerrar(); msg(h(x.mensaje), 'ok', true);
+          Paquetes.olvidar(id); Local.del('ens_inicio');
+          PILA.pop(); atras();
+        }).catch(function(e){ b.disabled = false; fallo(e); });
+      };
+    }).catch(fallo);
   }
 
   function editar(){
@@ -2859,7 +2945,11 @@ function campoEnsayo(id){
       '<button class="icono" id="hCerrar">×</button></div>' +
       (ya ? '<div class="ya">Esta parcela ya tiene datos de hoy. Si guarda otra vez se agrega otra medición.</div>' : '') +
       '<div class="tenue" style="font-size:13px;margin-top:8px">' + h(S.plan.actividad) +
-        (S.plan.submuestras ? ' · ' + h(S.plan.submuestras) + ' submuestras: anote el promedio' : '') + '</div>' +
+        (S.plan.muestras > 1 ? ' · ' + S.plan.muestras + ' muestras por parcela' : '') + '</div>' +
+      (S.plan.muestras > 1 ? '<div class="pestanas chicas" id="hMuestras">' +
+        rango(S.plan.muestras).map(function(n){
+          return '<button class="' + (n === 1 ? 'on' : '') + '" data-muestra="' + n + '">Muestra ' + n + '</button>';
+        }).join('') + '</div>' : '') +
       cuerpoForm +
       '<label>Observación (opcional, va a la bitácora)</label><input id="hObs" placeholder="Algo que deba saberse de esta parcela">' +
       '<div class="botones"><button class="sec" id="hSig">Siguiente</button><button id="hGuardar">Guardar</button></div>';
@@ -2869,7 +2959,18 @@ function campoEnsayo(id){
     $('hSig').onclick = function(){ siguiente(p); };
     $('hGuardar').onclick = function(){ guardar(p, form); };
     if (form === 'COBERTURA') cablearCobertura();
-    if (form === 'COSECHA_CANA') cablearCosecha();
+    else if (form === 'COSECHA_CANA') cablearCosecha();
+    else cablearVariables();
+    S.muestra = 1;
+    if ($('hMuestras')) {
+      al('[data-muestra]', 'click', function(b, ev){
+        ev.preventDefault();
+        if (!guardarMuestraEnMemoria()) return;
+        $$('[data-muestra]').forEach(function(x){ x.className = x === b ? 'on' : ''; });
+        S.muestra = Number(b.dataset.muestra);
+        ponerMuestraEnPantalla();
+      }, $('hMuestras'));
+    }
     var primero = $('cHoja').querySelector('input:not([type=button])');
     if (primero) setTimeout(function(){ primero.focus(); }, 150);
     al('[data-var]', 'keydown', function(i, ev){
@@ -2879,11 +2980,149 @@ function campoEnsayo(id){
     }, $('cHoja'));
   }
 
+  function rango(n){ var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+
+  /**
+   * El formulario se arma solo con lo que dice la plantilla: un dato, diez
+   * datos con promedio, un conteo en metros lineales, un porcentaje sobre
+   * otra variable, una lista de botones o un sí/no.
+   */
   function formVariables(){
-    return S.plan.variables.map(function(v, i){
-      return '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
-        '<input type="number" inputmode="decimal" step="any" data-var="' + i + '" autocomplete="off" class="grande">';
-    }).join('');
+    var repetidas = S.plan.variables.filter(function(v){ return Number(v.n) > 1; });
+    var sueltas = S.plan.variables.filter(function(v){ return !(Number(v.n) > 1); });
+    var n = repetidas.length ? Number(repetidas[0].n) : 0;
+
+    return sueltas.map(function(v, i){ return campoVariable(v, i); }).join('') +
+      (repetidas.length ? '<label style="margin-top:14px">' +
+        h(repetidas.map(function(v){ return v.nombre; }).join(' · ')) + ' — ' + n + ' datos</label>' +
+        '<div class="tabla-env"><table class="tabla datos10"><tr><th style="width:34px">#</th>' +
+        repetidas.map(function(v){
+          return '<th>' + h(v.nombre) + (v.unidad ? '<span class="tenue"> (' + h(v.unidad) + ')</span>' : '') + '</th>';
+        }).join('') + '</tr>' +
+        rango(n).map(function(k){
+          return '<tr><td class="mono">' + k + '</td>' + repetidas.map(function(v, j){
+            return '<td>' + (v.tipo === 'si_no'
+              ? '<button type="button" class="opcion chica rep" data-rep="' + j + ':' + k + '" data-val="">—</button>'
+              : '<input class="rep" type="number" inputmode="decimal" step="any" data-rep="' + j + ':' + k + '">') + '</td>';
+          }).join('') + '</tr>';
+        }).join('') + '</table></div>' +
+        '<div class="ya" id="hProm" style="background:var(--verde-tenue);color:var(--verde)">' +
+        'Escriba los datos y aquí aparece el promedio</div>' : '');
+  }
+
+  function campoVariable(v, i){
+    var etq = '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
+      (ayudaDe(v) ? '<p class="guia" style="margin:-2px 0 6px">' + h(ayudaDe(v)) + '</p>' : '');
+    var id = 'v' + i;
+    if (v.tipo === 'lista') {
+      return etq + '<div class="opciones">' + v.opciones.map(function(o){
+        return '<button type="button" class="opcion una" data-campo="' + id + '" data-val="' + h(o) + '">' + h(o) + '</button>';
+      }).join('') + '</div>';
+    }
+    if (v.tipo === 'si_no') {
+      return etq + '<div class="opciones">' + ['Sí', 'No'].map(function(o){
+        return '<button type="button" class="opcion una" data-campo="' + id + '" data-val="' + h(o) + '">' + h(o) + '</button>';
+      }).join('') + '</div>';
+    }
+    if (v.tipo === 'texto') {
+      return etq + '<input type="text" data-var="' + i + '" id="' + id + '" autocomplete="off">';
+    }
+    if (v.tipo === 'por_metro') {
+      return etq + '<div class="fila" style="gap:8px">' +
+        '<div style="flex:2 1 150px"><label style="margin-top:0">Total contado</label>' +
+          '<input class="grande" type="number" inputmode="decimal" step="any" min="0" ' +
+          'data-var="' + i + '" id="' + id + '"></div>' +
+        '<div style="flex:1 1 120px"><label style="margin-top:0">Metros lineales</label>' +
+          '<input type="number" inputmode="decimal" step="any" min="0" ' +
+          'id="' + id + 'L" value="' + h(v.largo || 10) + '"></div></div>' +
+        '<div class="ya" id="' + id + 'R" style="background:var(--verde-tenue);color:var(--verde)">' +
+        'Se cuenta en ' + h(v.largo || 10) + ' metros lineales</div>';
+    }
+    return etq + '<input class="grande" type="number" inputmode="decimal" step="any" data-var="' + i + '" id="' + id + '" autocomplete="off">';
+  }
+
+  function ayudaDe(v){
+    if (v.tipo === 'por_metro') return 'Cuente en los metros lineales que diga la casilla de la derecha.';
+    if (v.tipo === 'porcentaje') return 'El porcentaje sobre ' + v.base + ' lo calcula el módulo.';
+    return '';
+  }
+
+  /** Lee la hoja y devuelve {variable: dato} tal como lo espera el servidor. */
+  function leerVariables(){
+    var datos = {}, repetidas = [];
+    S.plan.variables.forEach(function(v, i){
+      if (Number(v.n) > 1) { repetidas.push(v); return; }
+      var id = 'v' + i;
+      if (v.tipo === 'lista' || v.tipo === 'si_no') {
+        var b = $('cHoja').querySelector('[data-campo="' + id + '"].on');
+        if (b) datos[v.nombre] = b.dataset.val;
+      } else if (v.tipo === 'por_metro') {
+        var t = $(id) ? $(id).value.trim() : '';
+        if (t !== '') datos[v.nombre] = { total: t, largo: $(id + 'L') ? $(id + 'L').value : v.largo };
+      } else {
+        var x = $(id) ? $(id).value.trim() : '';
+        if (x !== '') datos[v.nombre] = x;
+      }
+    });
+    repetidas.forEach(function(v, j){
+      var lista = [];
+      $$('[data-rep^="' + j + ':"]', $('cHoja')).forEach(function(el){
+        lista.push(el.tagName === 'BUTTON' ? (el.dataset.val || '') : el.value.trim());
+      });
+      if (lista.some(function(x){ return x !== ''; })) datos[v.nombre] = lista;
+    });
+    return datos;
+  }
+
+  /** Promedio al vuelo de la tabla de datos repetidos. */
+  function promedios(){
+    if (!$('hProm')) return;
+    var repetidas = S.plan.variables.filter(function(v){ return Number(v.n) > 1; });
+    var partes = repetidas.map(function(v, j){
+      var vals = [], si = 0, cuantas = 0;
+      $$('[data-rep^="' + j + ':"]', $('cHoja')).forEach(function(el){
+        var x = el.tagName === 'BUTTON' ? (el.dataset.val || '') : el.value.trim();
+        if (x === '') return;
+        cuantas++;
+        if (v.tipo === 'si_no') { if (/^s/i.test(x)) si++; }
+        else { var n = Number(x.replace(',', '.')); if (!isNaN(n)) vals.push(n); }
+      });
+      if (v.tipo === 'si_no') return cuantas ? v.nombre + ': ' + si + ' de ' + cuantas : '';
+      if (!vals.length) return '';
+      var prom = vals.reduce(function(a, b){ return a + b; }, 0) / vals.length;
+      return v.nombre + ': ' + numero(prom, 2) + (v.unidad ? ' ' + v.unidad : '') + ' (' + vals.length + ' datos)';
+    }).filter(Boolean);
+    $('hProm').textContent = partes.length ? partes.join(' · ') : 'Escriba los datos y aquí aparece el promedio';
+  }
+
+  function cablearVariables(){
+    al('[data-campo]', 'click', function(b, ev){
+      ev.preventDefault();
+      var grupo = b.parentNode, ya = b.className.indexOf(' on') >= 0;
+      $$('[data-campo="' + b.dataset.campo + '"]', grupo).forEach(function(o){ o.className = o.className.replace(' on', ''); });
+      if (!ya) b.className += ' on';
+    }, $('cHoja'));
+    al('.rep', 'click', function(b, ev){
+      if (b.tagName !== 'BUTTON') return;
+      ev.preventDefault();
+      var v = b.dataset.val === 'Sí' ? 'No' : b.dataset.val === 'No' ? '' : 'Sí';
+      b.dataset.val = v; b.textContent = v || '—';
+      b.className = 'opcion chica rep' + (v === 'Sí' ? ' on' : '');
+      promedios();
+    }, $('cHoja'));
+    al('.rep', 'input', promedios, $('cHoja'));
+    S.plan.variables.forEach(function(v, i){
+      if (v.tipo !== 'por_metro') return;
+      var id = 'v' + i;
+      function calcular(){
+        var t = Number($(id).value), l = Number($(id + 'L').value) || 0;
+        $(id + 'R').textContent = t > 0 && l > 0
+          ? numero(t / l, 2) + ' ' + (v.unidad || 'conteo') + ' por metro (' + t + ' en ' + l + ' m)'
+          : 'Se cuenta en ' + l + ' metros lineales';
+      }
+      $(id).oninput = calcular; $(id + 'L').oninput = calcular;
+    });
+    promedios();
   }
 
   /**
@@ -2893,9 +3132,9 @@ function campoEnsayo(id){
    * grandes porque esto se llena de pie en el campo.
    */
   function formCobertura(){
-    return '<label>Cobertura de maleza (%)</label>' +
-      '<input id="hCob" type="number" inputmode="decimal" step="any" min="0" max="100" autocomplete="off" class="grande">' +
-      '<div class="ya" id="hControl" style="background:var(--verde-tenue);color:var(--verde)">Escriba la cobertura</div>' +
+    return '<label>Porcentaje de control (%)</label>' +
+      '<input id="hCtrl" type="number" inputmode="decimal" step="any" min="0" max="100" autocomplete="off" class="grande">' +
+      '<div class="ya" id="hControl" style="background:var(--verde-tenue);color:var(--verde)">Escriba el control</div>' +
       '<label>De esa maleza, ¿qué especies son? (suma 100 %)</label>' +
       '<div id="hEspecies"></div>' +
       '<div class="acciones" style="margin-top:6px"><button class="sec chico" id="hMasEsp">Agregar especie</button>' +
@@ -2958,10 +3197,12 @@ function campoEnsayo(id){
       $('hSuma').style.color = t && Math.abs(t - 100) > 2 ? 'var(--error)' : 'var(--tenue)';
     }
     $('hMasEsp').onclick = function(){ leer(); lista.push({}); pintar(); };
-    $('hCob').oninput = function(){
+    $('hCtrl').oninput = function(){
       var c = Number(this.value);
-      $('hControl').textContent = this.value === '' ? 'Escriba la cobertura'
-        : (c >= 0 && c <= 100 ? 'Control: ' + numero(100 - c, 1) + ' % del área quedó limpia' : 'La cobertura va de 0 a 100 %');
+      $('hControl').textContent = this.value === '' ? 'Escriba el control'
+        : (c >= 0 && c <= 100
+            ? 'Cobertura de maleza: ' + numero(100 - c, 1) + ' %. Ese 100 % se reparte entre las especies.'
+            : 'El control va de 0 a 100 %');
     };
     pintar();
   }
@@ -2976,10 +3217,18 @@ function campoEnsayo(id){
       return '<label>' + etiqueta + '</label><input id="' + id + '"' + (l.length ? ' list="dl' + id + '"' : '') +
         ' autocomplete="off">' + (l.length ? '<datalist id="dl' + id + '">' + opciones(l) + '</datalist>' : '');
     }
-    return '<label>Longitud cosechada (m)</label>' +
+    return '<label>¿Cuánto se cosechó?</label>' +
+      '<div class="fila" style="gap:8px">' +
+        '<div style="flex:1 1 110px"><input id="hSurcos" type="number" inputmode="numeric" min="0" step="1" ' +
+          'placeholder="surcos completos" autocomplete="off"></div>' +
+        '<div style="flex:1 1 120px"><input id="hLargoSurco" type="number" inputmode="decimal" step="any" min="0" ' +
+          'placeholder="largo del surco (m)" value="' + h(S.paq.ensayo.largoSurco || '') + '" autocomplete="off"></div>' +
+        '<div style="flex:1 1 120px"><input id="hUltimo" type="number" inputmode="decimal" step="any" min="0" ' +
+          'placeholder="metros del último" autocomplete="off"></div></div>' +
+      '<label>Longitud total cosechada (m)</label>' +
       '<input id="hLargo" type="number" inputmode="decimal" step="any" min="0" autocomplete="off" class="grande">' +
       '<div class="ya" id="hArea" style="background:var(--verde-tenue);color:var(--verde)">' +
-        'A ' + numero(S.paq.ensayo.distSurcos || 1.5, 2) + ' m entre surcos</div>' +
+        'Escriba los surcos y el módulo suma la longitud, o escríbala directo.</div>' +
       '<label>No. de nota de envío</label><input id="hNota" autocomplete="off">' +
       campo('hCabezal', 'Código del cabezal', 'CABEZAL') +
       campo('hEquipo', 'Código del equipo', 'COSECHADORA') +
@@ -2987,16 +3236,64 @@ function campoEnsayo(id){
       '';
   }
 
+  /**
+   * La longitud sale de los surcos completos por su largo más los metros
+   * del último surco. Si se prefiere, se escribe la longitud total directo.
+   */
   function cablearCosecha(){
-    $('hLargo').oninput = function(){
-      var m = Number(this.value), d = Number(S.paq.ensayo.distSurcos) || 1.5;
+    function pintar(){
+      var m = Number(val('hLargo')), d = Number(S.paq.ensayo.distSurcos) || 1.5;
       $('hArea').textContent = m > 0
         ? 'Área cosechada: ' + numero(m * d, 1) + ' m² (' + numero(m * d / 10000, 4) + ' ha) a ' + numero(d, 2) + ' m entre surcos'
-        : 'A ' + numero(d, 2) + ' m entre surcos';
-    };
+        : 'Escriba los surcos y el módulo suma la longitud, o escríbala directo.';
+    }
+    function sumar(){
+      var n = Number(val('hSurcos')) || 0, largo = Number(val('hLargoSurco')) || 0, ult = Number(val('hUltimo')) || 0;
+      if (n > 0 && largo > 0) $('hLargo').value = Math.round((n * largo + ult) * 100) / 100;
+      else if (ult > 0 && !n) $('hLargo').value = ult;
+      pintar();
+    }
+    ['hSurcos', 'hLargoSurco', 'hUltimo'].forEach(function(id){ $(id).oninput = sumar; });
+    $('hLargo').oninput = pintar;
+    pintar();
   }
 
-  function cerrarHoja(){ $('cHoja').className = 'hoja'; S.parcela = null; }
+  /**
+   * Con varias muestras por parcela, lo escrito se guarda en memoria al
+   * cambiar de pestaña y se devuelve a la pantalla al volver.
+   */
+  function guardarMuestraEnMemoria(){
+    S.muestras = S.muestras || {};
+    S.muestras[S.muestra || 1] = leerVariables();
+    return true;
+  }
+  function ponerMuestraEnPantalla(){
+    var datos = (S.muestras || {})[S.muestra] || {};
+    S.plan.variables.forEach(function(v, i){
+      var id = 'v' + i, d = datos[v.nombre];
+      if (Number(v.n) > 1) {
+        var j = S.plan.variables.filter(function(x){ return Number(x.n) > 1; }).indexOf(v);
+        $$('[data-rep^="' + j + ':"]', $('cHoja')).forEach(function(el, k){
+          var x = d && d[k] !== undefined ? d[k] : '';
+          if (el.tagName === 'BUTTON') { el.dataset.val = x; el.textContent = x || '—';
+            el.className = 'opcion chica rep' + (x === 'Sí' ? ' on' : ''); }
+          else el.value = x;
+        });
+        return;
+      }
+      if (v.tipo === 'lista' || v.tipo === 'si_no') {
+        $$('[data-campo="' + id + '"]', $('cHoja')).forEach(function(b){
+          b.className = 'opcion una' + (d && b.dataset.val === d ? ' on' : '');
+        });
+      } else if (v.tipo === 'por_metro') {
+        if ($(id)) $(id).value = d ? d.total : '';
+        if ($(id + 'L')) $(id + 'L').value = d ? d.largo : (v.largo || 10);
+      } else if ($(id)) $(id).value = d || '';
+    });
+    promedios();
+  }
+
+  function cerrarHoja(){ $('cHoja').className = 'hoja'; S.parcela = null; S.muestras = null; S.muestra = 1; }
 
   function guardar(p, form){
     var obs = val('hObs');
@@ -3006,9 +3303,10 @@ function campoEnsayo(id){
     var items = [], capturado = false;
 
     if (form === 'COBERTURA') {
-      var cob = val('hCob');
-      if (cob === '') return msg('Escriba la cobertura de maleza.', 'err');
-      if (isNaN(Number(cob)) || Number(cob) < 0 || Number(cob) > 100) return msg('La cobertura va de 0 a 100 %.', 'err');
+      var ctrl = val('hCtrl');
+      if (ctrl === '') return msg('Escriba el porcentaje de control.', 'err');
+      if (isNaN(Number(ctrl)) || Number(ctrl) < 0 || Number(ctrl) > 100) return msg('El control va de 0 a 100 %.', 'err');
+      var cob = String(Math.round((100 - Number(ctrl.replace(',', '.'))) * 100) / 100);
       var esp = $$('.esp', $('cHoja')).map(function(d){
         function marcado(c){ var b = d.querySelector('.' + c + '.on'); return b ? b.dataset.val : ''; }
         return { especie: d.querySelector('.eNom').value.trim(), pct: d.querySelector('.ePct').value.trim(),
@@ -3020,7 +3318,7 @@ function campoEnsayo(id){
           !confirm('No anotó ninguna especie. ¿Guardar solo la cobertura?')) return;
       if (esp.length && Math.abs(suma - 100) > 2 &&
           !confirm('Las especies suman ' + Math.round(suma) + ' % y deberían sumar 100 %. ¿Guardar así?')) return;
-      items.push(Object.assign({ uuid: uuid(), tipo: 'COBERTURA', cobertura: cob.replace(',', '.'), especies: esp }, base));
+      items.push(Object.assign({ uuid: uuid(), tipo: 'COBERTURA', control: ctrl.replace(',', '.'), especies: esp }, base));
       capturado = true;
 
     } else if (form === 'COSECHA_CANA') {
@@ -3029,22 +3327,22 @@ function campoEnsayo(id){
       if (isNaN(Number(largo)) || Number(largo) <= 0) return msg('La longitud debe ser un número mayor que cero.', 'err');
       if (!val('hNota') && !confirm('No anotó la nota de envío. ¿Guardar así?')) return;
       items.push(Object.assign({ uuid: uuid(), tipo: 'COSECHA', longitud: largo.replace(',', '.'),
+        surcos: val('hSurcos'), largoSurco: val('hLargoSurco'), ultimo: val('hUltimo'),
         notaEnvio: val('hNota'), cabezal: codigoDe(val('hCabezal')), equipo: codigoDe(val('hEquipo')),
         alzadora: codigoDe(val('hAlzadora')), obs: obs }, base));
       capturado = true;
 
     } else {
-      var valores = $$('[data-var]', $('cHoja')).map(function(i){
-        return { v: S.plan.variables[Number(i.dataset.var)], valor: i.value.trim() };
-      }).filter(function(x){ return x.valor !== ''; });
-      if (!valores.length && !obs) return msg('Escriba al menos un valor.', 'err');
-      var malo = valores.filter(function(x){ return isNaN(Number(x.valor.replace(',', '.'))); })[0];
-      if (malo) return msg(h(malo.v.nombre) + ' debe ser un número.', 'err');
-      valores.forEach(function(x){
-        items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTREO', variable: x.v.nombre, unidad: x.v.unidad,
-                                   valor: x.valor.replace(',', '.') }, base));
+      if (!guardarMuestraEnMemoria()) return;
+      var muestras = S.muestras || {};
+      var conDatos = Object.keys(muestras).filter(function(k){ return Object.keys(muestras[k]).length; });
+      if (!conDatos.length && !obs) return msg('Escriba al menos un dato.', 'err');
+      if (S.plan.muestras > 1 && conDatos.length < S.plan.muestras &&
+          !confirm('Solo llenó ' + conDatos.length + ' de ' + S.plan.muestras + ' muestras. ¿Guardar así?')) return;
+      conDatos.forEach(function(k){
+        items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTRA', muestra: Number(k), datos: muestras[k] }, base));
       });
-      capturado = valores.length > 0;
+      capturado = conDatos.length > 0;
     }
 
     if (obs && form !== 'COSECHA_CANA') {
@@ -3273,7 +3571,13 @@ function vistaTabla(nombre){
         var actual = f ? f[c.c] : (c.c === 'DEPARTAMENTO' || c.c === 'LINEA' ? filtro.depto : (c.def === undefined ? '' : c.def));
         if (c.auto) return f ? '<label>' + h(c.e) + '</label><input value="' + h(actual) + '" disabled>' : '';
         var ctl = c.t === 'lista' ? '<select data-col="' + c.c + '">' + opciones(c.op.map(function(o){ return { v: o, t: o || '—' }; }), actual) + '</select>'
-          : (c.c === 'VARIABLES' || c.c === 'AYUDA' || c.c === 'OPCIONES') ? '<textarea rows="2" data-col="' + c.c + '">' + h(actual) + '</textarea>'
+          : (c.c === 'VARIABLES' || c.c === 'AYUDA' || c.c === 'OPCIONES') ? '<textarea rows="' + (c.c === 'VARIABLES' ? 3 : 2) + '" data-col="' + c.c + '">' + h(actual) + '</textarea>' +
+            (c.c === 'VARIABLES' && t.ayudaVariables ? '<details class="ayuda-var"><summary>¿Cómo se escribe lo que se mide?</summary>' +
+              '<p class="guia">Separe las variables con punto y coma. La unidad va entre paréntesis y, si el dato ' +
+              'no es uno solo, se indica entre corchetes:</p><div class="tabla-env"><table class="tabla">' +
+              t.ayudaVariables.map(function(x){
+                return '<tr><td class="mono">' + h(x[0]) + '</td><td>' + h(x[1]) + '</td></tr>';
+              }).join('') + '</table></div></details>' : '')
           : '<input data-col="' + c.c + '" value="' + h(actual) + '"' + (c.t === 'numero' ? ' inputmode="decimal"' : '') + '>';
         return '<label>' + h(c.e) + (c.req ? ' *' : '') + '</label>' + ctl;
       }).join('') + '<div class="acciones"><button id="vGuardar">Guardar</button>' +
