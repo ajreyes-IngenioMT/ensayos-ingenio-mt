@@ -1440,7 +1440,10 @@ function vistaNuevoEnsayo(depto){
 
     '<section class="seccion"><h2>Responsable</h2><div class="fila">' +
       '<div><label>Nombre</label><input id="nResp" value="' + h(SESION.nombre) + '"></div>' +
-      '<div><label>Correo para los avisos</label><input id="nEmail" type="email" value="' + h(SESION.email || '') + '"></div></div>' +
+      '<div><label>Correos para los avisos</label><input id="nEmail" value="' + h(SESION.email || '') + '" ' +
+        'placeholder="uno o varios, separados por coma"></div></div>' +
+      '<p class="guia">Puede poner varios correos separados por coma. Además, todo contacto con el rol ' +
+      'DEPARTAMENTO recibe copia de los avisos de su departamento (Configuración ▸ Contactos).</p>' +
     '</section>' +
 
     '<section class="seccion"><h2>Documentos (opcional)</h2>' +
@@ -1588,10 +1591,10 @@ function vistaNuevoEnsayo(depto){
   function avisoDiseno(){
     var d = val('nDiseno');
     $('nReps').disabled = (d === 'LOTES_COMERCIALES');
-    $('nAvisoDiseno').innerHTML = (d === 'LOTES_COMERCIALES' || d === 'FRANJAS')
-      ? '<div class="aviso-barra" style="margin-top:12px">En este arreglo los tratamientos no se repiten dentro del lote: no hay ' +
-        'error experimental que estimar y el ANOVA no aplica. La comparación se hace contra un lote testigo; agréguelo ' +
-        'arriba y márquelo como testigo.</div>' : '';
+    $('nAvisoDiseno').innerHTML = d === 'LOTES_COMERCIALES'
+      ? '<div class="aviso-barra" style="margin-top:12px">En lotes comerciales cada tratamiento va en un lote completo ' +
+        'y no se repite, así que la comparación se hace contra un lote testigo: agréguelo arriba y márquelo como testigo.</div>'
+      : '';
   }
 
   function cargarCampos(){
@@ -1798,7 +1801,7 @@ function vistaEnsayo(id, pestana, archivoParcelas){
         dato('Tratamientos × rep.', e.tratamientos + ' × ' + e.repeticiones) +
         dato('Distancia entre surcos', e.distSurcos ? numero(e.distSurcos, 2) + ' m' : '') +
         dato('Aplicación', e.aplicacion) +
-        dato('Equipo', e.equipo || e.equipoDesc ? [e.equipo, e.equipoDesc].filter(Boolean).join(' · ') : '') +
+        dato('Se aplicó con', [e.tipoEquipoNombre, e.equipo, e.equipoDesc].filter(Boolean).join(' · ')) +
         dato('Cosecha estimada', e.cosechaEst) +
         dato('Responsable', e.responsable) + dato('Creado por', e.creadoPor + (e.creado ? ' · ' + e.creado : '')) +
       '</div>' +
