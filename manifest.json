@@ -1,0 +1,28 @@
+{
+  "name": "Módulo de Ensayos · Ingenio Madre Tierra",
+  "short_name": "Ensayos MT",
+  "description": "Ensayos de investigación agrícola del Ingenio Madre Tierra: muestreo y cosecha en campo, con o sin señal.",
+  "lang": "es-GT",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFFFFF",
+  "theme_color": "#0D9440",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-recortable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Muestreo y cosecha",
+      "short_name": "Muestreo",
+      "description": "Entrar directo a capturar en campo",
+      "url": "./index.html?ir=campo",
+      "icons": [{ "src": "icono-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
