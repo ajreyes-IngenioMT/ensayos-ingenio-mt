@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- La barra de arriba la dibuja el propio módulo, así que aquí no va
+         ninguna: la aplicación abre a pantalla completa. -->
+    <style name="Tema" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/blanco</item>
+        <item name="android:colorPrimary">@color/verde</item>
+        <item name="android:colorPrimaryDark">@color/verde_oscuro</item>
+        <item name="android:statusBarColor">@color/verde</item>
+    </style>
+</resources>

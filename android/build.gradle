@@ -1,0 +1,5 @@
+// Las versiones van fijas a propósito: así la compilación de hoy da el
+// mismo resultado dentro de un año.
+plugins {
+    id 'com.android.application' version '8.3.2' apply false
+}

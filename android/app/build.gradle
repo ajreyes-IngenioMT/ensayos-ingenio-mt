@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'gt.madretierra.ensayos'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "gt.madretierra.ensayos"
+        // Android 5.0 en adelante: cubre prácticamente cualquier teléfono
+        // que siga en uso. Más atrás que eso ya no recibe ni parches de
+        // seguridad y el navegador de adentro no sirve.
+        minSdk 21
+        targetSdk 34
+
+        // Suben solos en cada compilación (ver el flujo de GitHub).
+        versionCode project.hasProperty('codigoVersion') ? codigoVersion.toInteger() : 1
+        versionName project.hasProperty('nombreVersion') ? nombreVersion : '1.0'
+    }
+
+    signingConfigs {
+        release {
+            // Los datos de la firma llegan desde GitHub como secretos.
+            // Sin ellos se compila igual, pero sin firmar.
+            if (project.hasProperty('almacenFirma')) {
+                storeFile file(almacenFirma)
+                storePassword claveAlmacen
+                keyAlias aliasFirma
+                keyPassword claveClave
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (project.hasProperty('almacenFirma')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity:1.8.2'
+    implementation 'androidx.core:core:1.12.0'
+}

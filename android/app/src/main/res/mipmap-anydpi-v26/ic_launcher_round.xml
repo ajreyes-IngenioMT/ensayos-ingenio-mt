@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono adaptable: de Android 8 en adelante el teléfono le da la forma
+     (círculo, cuadrado redondeado, gota) según la marca del aparato. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/verde" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

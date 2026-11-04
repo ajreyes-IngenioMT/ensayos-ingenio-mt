@@ -1,0 +1,132 @@
+# Compila el APK del Módulo de Ensayos y lo publica.
+#
+# Corre solo cada vez que cambia algo del proyecto Android, y también a
+# mano desde la pestaña Actions. El APK sale FIRMADO siempre con la misma
+# llave: eso es lo que permite instalar una versión encima de la otra sin
+# desinstalar. Si la llave cambiara, Android rechazaría la actualización.
+#
+# La llave no está aquí: vive en los secretos del repositorio.
+
+name: APK
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  compilar:
+    name: Compilar y firmar
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Traer el repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Android
+        uses: android-actions/setup-android@v3
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      # El número de versión sube solo con cada compilación, para que
+      # Android reconozca que la nueva es más reciente que la instalada.
+      - name: Numerar esta versión
+        id: version
+        run: |
+          CODIGO=$(( 1000 + GITHUB_RUN_NUMBER ))
+          NOMBRE="1.$GITHUB_RUN_NUMBER"
+          echo "codigo=$CODIGO" >> "$GITHUB_OUTPUT"
+          echo "nombre=$NOMBRE" >> "$GITHUB_OUTPUT"
+          echo "Versión $NOMBRE (código $CODIGO)"
+
+      - name: Recuperar la llave de firma
+        id: firma
+        env:
+          LLAVE: ${{ secrets.ANDROID_LLAVE_BASE64 }}
+        run: |
+          if [ -z "$LLAVE" ]; then
+            echo "hay=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::No está el secreto ANDROID_LLAVE_BASE64. El APK saldrá SIN FIRMAR y no se podrá instalar."
+          else
+            echo "$LLAVE" | base64 -d > "$RUNNER_TEMP/ensayos.jks"
+            echo "hay=si" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compilar el APK
+        working-directory: android
+        env:
+          CLAVE_ALMACEN: ${{ secrets.ANDROID_CLAVE_ALMACEN }}
+          ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          CLAVE_CLAVE: ${{ secrets.ANDROID_CLAVE_CLAVE }}
+        run: |
+          set -e
+          ARGS="-PcodigoVersion=${{ steps.version.outputs.codigo }} -PnombreVersion=${{ steps.version.outputs.nombre }}"
+          if [ "${{ steps.firma.outputs.hay }}" = "si" ]; then
+            ARGS="$ARGS -PalmacenFirma=$RUNNER_TEMP/ensayos.jks -PclaveAlmacen=$CLAVE_ALMACEN -PaliasFirma=$ALIAS -PclaveClave=$CLAVE_CLAVE"
+          fi
+          gradle --no-daemon assembleRelease $ARGS
+
+      - name: Comprobar que quedó firmado
+        if: steps.firma.outputs.hay == 'si'
+        working-directory: android
+        run: |
+          set -e
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "APK: $APK"
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          "$APKSIGNER" verify --print-certs "$APK"
+          echo "El APK está firmado."
+
+      - name: Dejar el APK con su nombre
+        id: apk
+        working-directory: android
+        run: |
+          set -e
+          ORIGEN=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          DESTINO="ensayos-mt-${{ steps.version.outputs.nombre }}.apk"
+          cp "$ORIGEN" "$GITHUB_WORKSPACE/$DESTINO"
+          echo "archivo=$DESTINO" >> "$GITHUB_OUTPUT"
+          ls -lh "$GITHUB_WORKSPACE/$DESTINO"
+
+      # Queda guardado aquí por si se quiere bajar sin publicar.
+      - name: Guardar el APK en la compilación
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.archivo }}
+          path: ${{ steps.apk.outputs.archivo }}
+          retention-days: 90
+
+      # Y se publica, que es de donde lo bajan los usuarios.
+      - name: Publicar el APK
+        if: steps.firma.outputs.hay == 'si'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.nombre }}
+          name: Ensayos MT ${{ steps.version.outputs.nombre }}
+          files: ${{ steps.apk.outputs.archivo }}
+          body: |
+            **Módulo de Ensayos · Ingenio Madre Tierra**
+
+            Versión ${{ steps.version.outputs.nombre }} para Android 5.0 en adelante.
+
+            Bájelo desde el teléfono y ábralo para instalarlo. Si ya tiene
+            una versión instalada, ésta se instala encima: **no hay que
+            desinstalar** y no se pierde nada de lo capturado.
+
+            Recuerde que el contenido del módulo se actualiza solo: esta
+            aplicación solo hay que cambiarla cuando se avise.
