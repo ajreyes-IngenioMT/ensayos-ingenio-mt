@@ -470,6 +470,11 @@
   .asis-f .sub{display:block;font-size:12.5px;color:var(--tenue);margin-bottom:4px}
   .asis-f p{margin:4px 0 0;font-size:13.5px;line-height:1.45}
   .asis-f em{display:block;font-style:normal;font-size:12px;color:var(--verde);margin-top:6px;font-weight:600}
+  .asis-fuera{margin-top:16px;padding:14px 16px;border:1px dashed var(--linea);border-radius:10px;background:var(--papel)}
+  .asis-fuera b{font-size:14px}
+  .asis-fuera p{margin:6px 0 0;font-size:13px;color:var(--texto);line-height:1.5}
+  .asis-fuera p.ojo{color:var(--acento);background:var(--ambar);border-radius:6px;padding:8px 10px;margin-top:8px}
+  .asis-resp.ia{background:var(--azul-tenue);color:var(--ink);font-weight:400;line-height:1.55}
 
   /* ============================ ACCESO ============================ */
   .acceso{flex:1;overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:24px 18px}
@@ -514,6 +519,23 @@
   .campo .vistas button.on{color:var(--verde)}
   .campo .vistas button:hover{background:var(--papel);color:var(--ink)}
   .panel{flex:1 1 auto;position:relative;overflow:auto;min-height:0}
+
+  /* Lo que se revisa antes de creerle a un análisis. */
+  ul.revision{list-style:none;margin:4px 0 16px;padding:0}
+  ul.revision li{position:relative;padding:10px 12px 10px 34px;margin-bottom:6px;border-radius:8px;
+    font-size:13.5px;line-height:1.5;background:var(--papel);color:var(--texto)}
+  ul.revision li:before{position:absolute;left:12px;top:10px;font-weight:700}
+  ul.revision li.ok{background:var(--verde-tenue)}
+  ul.revision li.ok:before{content:'✓';color:var(--verde)}
+  ul.revision li.aviso{background:var(--ambar)}
+  ul.revision li.aviso:before{content:'!';color:var(--acento)}
+  ul.revision li.alerta{background:var(--rojo-tenue)}
+  ul.revision li.alerta:before{content:'!';color:var(--error)}
+
+  /* Algo que ya está hecho: se dice y no se vuelve a pedir. */
+  .listo{background:var(--verde-tenue);border:1px solid #BEDFA4;border-radius:10px;padding:14px 16px;
+    color:var(--texto);font-size:14px;line-height:1.5}
+  .listo b{color:var(--verde)}
 
   /* Pasos numerados (cómo instalar en el teléfono, por ejemplo). */
   ol.pasos{margin:10px 0 14px;padding-left:22px}
@@ -635,6 +657,17 @@ var app = document.getElementById('app');
 /* Dirección /exec del libro publicado. Solo la usa la copia de GitHub. */
 var API_URL = 'https://script.google.com/macros/s/AKfycbz3JITkjJNk7md28vMREtCcraXEe426YyRTXq4FUJJ84hcZsb7j_i4mimbDdCrqnPMyjg/exec';
 var ESPERA_MAXIMA = 180000;   // Apps Script permite hasta 6 minutos por llamada
+
+/**
+ * Versión de esta pantalla. El servidor trae la suya y se comparan al
+ * entrar. Si el Code.gs de Apps Script quedó más viejo que este archivo,
+ * la aplicación lo dice de una vez: de otro modo las fallas aparecen
+ * sueltas y sin explicación («prot is not defined», «Método no
+ * disponible: asistente») y uno cree que el módulo está malo.
+ * Sube junto con VERSION_SERVIDOR de Code.gs.
+ */
+var VERSION_PANTALLA = 5;
+var SERVIDOR_VIEJO = false;
 var SESION = null;
 var PARAMS = (function(){
   var o = {};
@@ -746,6 +779,151 @@ function instalarApp(){
 }
 prepararApp();
 
+/**
+ * Avisa que el Code.gs de Apps Script quedó atrás. Es un aviso fijo:
+ * mientras no se actualice, va a seguir fallando cosas sueltas.
+ */
+function avisarServidorViejo(){
+  if (SERVIDOR_VIEJO) return;
+  SERVIDOR_VIEJO = true;
+  msg('El programa del servidor quedó desactualizado, por eso fallan algunas pantallas. ' +
+      'En Apps Script reemplace <b>Code.gs</b> y vuelva a implementar con <b>versión nueva</b>.',
+      'err', true, true);
+}
+
+/** Un método que el servidor no conoce es, casi siempre, un Code.gs viejo. */
+function esServidorViejo(e){
+  return /Método no disponible|is not defined|no está definid/i.test(String((e && e.message) || ''));
+}
+
+/* ------------------ lo que se puede ver sin señal ------------------ */
+/**
+ * Las pantallas de consulta (inicio, departamento, ficha del ensayo) se
+ * guardan en el teléfono cada vez que se abren con señal. Después, sin
+ * señal, se abren igual con lo último que se vio y la barra avisa de
+ * cuándo es esa copia.
+ *
+ * Solo se guarda lo que se CONSULTA. Lo que cambia datos (crear, guardar,
+ * borrar) nunca se resuelve con una copia: eso tiene que llegar al
+ * servidor, y mientras no llegue se dice claramente.
+ */
+var Vistas = {
+  TOPE: 20,     // cuántas pantallas se recuerdan antes de botar las viejas
+  clave: function(metodo, arg){ return 'ens_vista_' + metodo + (arg ? '_' + arg : ''); },
+
+  guardar: function(metodo, arg, datos){
+    var k = Vistas.clave(metodo, arg);
+    if (Local.set(k, { guardado: Date.now(), datos: datos })) return Vistas.podar();
+    // Sin espacio: se botan las más viejas y se reintenta una vez.
+    Vistas.podar(true);
+    Local.set(k, { guardado: Date.now(), datos: datos });
+  },
+
+  copia: function(metodo, arg){ return Local.get(Vistas.clave(metodo, arg), null); },
+
+  /** Deja solo las pantallas más recientes. */
+  podar: function(agresivo){
+    var todas = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('ens_vista_') === 0) todas.push({ k: k, t: (Local.get(k, {}) || {}).guardado || 0 });
+      }
+    } catch (e) { return; }
+    var tope = agresivo ? Math.floor(Vistas.TOPE / 2) : Vistas.TOPE;
+    if (todas.length <= tope) return;
+    todas.sort(function(a, b){ return a.t - b.t; });
+    todas.slice(0, todas.length - tope).forEach(function(x){ Local.del(x.k); });
+  },
+
+  olvidarTodo: function(){
+    try {
+      var k = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var n = localStorage.key(i);
+        if (n && n.indexOf('ens_vista_') === 0) k.push(n);
+      }
+      k.forEach(Local.del);
+    } catch (e) {}
+  }
+};
+
+/**
+ * Pide una pantalla de consulta al servidor y la guarda. Si no hay señal
+ * entrega la copia guardada marcada con _deCopia, para que la pantalla
+ * pueda decir de cuándo es.
+ */
+function apiVista(metodo, arg){
+  var args = arg === undefined ? [] : [arg];
+  return llamarServidor(metodo, [tokenGuardado()].concat(args)).then(function(r){
+    Vistas.guardar(metodo, arg, r);
+    Red.marcar(true);
+    return r;
+  }).catch(function(e){
+    if (String(e.message).indexOf('SESION_VENCIDA') >= 0) {
+      guardarToken(''); SESION = null;
+      vistaAcceso('Su sesión venció. Vuelva a entrar.');
+      e.manejado = true;
+      throw e;
+    }
+    if (esServidorViejo(e)) { avisarServidorViejo(); e.manejado = true; throw e; }
+    var c = Vistas.copia(metodo, arg);
+    if (c && e.sinRed) {
+      Red.marcar(false);
+      var d = c.datos;
+      try { d._deCopia = c.guardado; } catch (x) {}
+      return d;
+    }
+    throw e;
+  });
+}
+
+/* --------------------------- hay señal o no --------------------------- */
+/**
+ * Un solo lugar que sabe si hay señal, y una pastilla en la barra que lo
+ * dice siempre, no solo en campo. Al volver la señal se manda lo que
+ * estaba esperando y se refresca la pantalla que se esté viendo.
+ */
+var Red = {
+  hay: true,
+  alVolver: [],
+  marcar: function(hay){
+    var cambio = (Red.hay !== hay);
+    Red.hay = hay;
+    Red.pintar();
+    if (cambio && hay) Red.sincronizar();
+  },
+  /** El navegador puede decir que hay red y aun así no alcanzar el servidor. */
+  enLinea: function(){ return navigator.onLine !== false && Red.hay; },
+  pintar: function(){
+    $$('.estado-red').forEach(function(el){
+      var n = (typeof Cola !== 'undefined') ? Cola.todos().length : 0;
+      var sin = !Red.enLinea();
+      el.className = 'estado-red' + (n ? ' pend' : '') + (sin ? ' sin' : '');
+      el.textContent = (typeof Cola !== 'undefined' && Cola.enviando) ? 'Enviando…'
+        : n ? n + ' sin enviar'
+        : sin ? 'Sin señal' : 'Al día';
+    });
+  },
+  sincronizar: function(){
+    if (typeof Cola !== 'undefined') Cola.enviar(true);
+    var l = Red.alVolver.slice();
+    Red.alVolver = [];
+    l.forEach(function(f){ try { f(); } catch (e) {} });
+  },
+  /** La pantalla actual pide que la refresquen cuando vuelva la señal. */
+  cuandoVuelva: function(fn){ if (Red.alVolver.indexOf(fn) < 0) Red.alVolver.push(fn); }
+};
+window.addEventListener('online', function(){ Red.marcar(true); });
+window.addEventListener('offline', function(){ Red.marcar(false); });
+
+/** Franja para avisar que lo que se ve es una copia guardada. */
+function franjaCopia(datos){
+  if (!datos || !datos._deCopia) return '';
+  return '<div class="aviso-barra">Sin señal: esto es lo que se guardó ' +
+    h(haceCuanto(datos._deCopia)) + '. Al volver la señal se actualiza solo.</div>';
+}
+
 /* ------------------------- camino al servidor ------------------------- */
 /**
  * llamarServidor('metodo', [args]) -> Promise. Dentro de Apps Script usa
@@ -788,6 +966,9 @@ function api(metodo){
     if (String(e.message).indexOf('SESION_VENCIDA') >= 0) {
       guardarToken(''); SESION = null;
       vistaAcceso('Su sesión venció. Vuelva a entrar.');
+      e.manejado = true;
+    } else if (esServidorViejo(e)) {
+      avisarServidorViejo();
       e.manejado = true;
     }
     throw e;
@@ -862,6 +1043,7 @@ function abrirAsistente(textoInicial){
       '<p class="guia">Todo se resuelve aquí adentro, contra la hoja del módulo. ' +
       'Los datos de los ensayos no se mandan a ningún servicio de afuera.</p>' +
       '<div id="asR"></div>' +
+      '<div class="asis-ia" id="asIA"></div>' +
     '</div>');
   var ultima = 0;
   $('asQ').focus();
@@ -903,6 +1085,39 @@ function abrirAsistente(textoInicial){
     al('[data-as-ensayo]', 'click', function(b){
       v.cerrar(); ir(function(){ vistaEnsayo(b.dataset.asEnsayo); });
     }, $('asR'));
+    ofrecerIA(r.pregunta);
+  }
+
+  /**
+   * Botón aparte para preguntarle a Gemini. Es a propósito un botón y no
+   * una respuesta automática: lo que se escriba aquí SÍ sale a Google, y
+   * eso lo decide quien pregunta, pregunta por pregunta.
+   */
+  function ofrecerIA(pregunta){
+    if (!pregunta) { $('asIA').innerHTML = ''; return; }
+    $('asIA').innerHTML =
+      '<div class="asis-fuera"><b>¿Es una duda general de agronomía?</b>' +
+      '<p>El buscador de arriba solo sabe de este módulo. Una pregunta general ' +
+      '(«¿cómo actúa la ametrina?», «¿qué es un diseño de bloques?») se le puede hacer a ' +
+      '<b>Gemini</b>, de Google.</p>' +
+      '<p class="ojo">Si lo hace, <b>la pregunta sale del ingenio</b> y en el plan gratuito Google ' +
+      'puede usarla para entrenar. Gemini no tiene acceso a sus ensayos: solo lee lo que usted ' +
+      'escriba, así que no ponga datos del ingenio en la pregunta.</p>' +
+      '<div class="acciones"><button class="sec chico" id="asIAIr">Preguntarle a Gemini</button></div>' +
+      '<div id="asIAR"></div></div>';
+    $('asIAIr').onclick = function(){
+      var b = this; b.disabled = true;
+      $('asIAR').innerHTML = '<div class="cargando">Preguntando…</div>';
+      api('preguntarIA', pregunta).then(function(x){
+        b.disabled = false;
+        $('asIAR').innerHTML = '<div class="asis-resp ia">' + h(x.respuesta).replace(/\n/g, '<br>') +
+          '</div><p class="guia">Respondió ' + h(x.modelo) + ', que no conoce sus ensayos. ' +
+          'Confirme las dosis con la etiqueta del producto.</p>';
+      }).catch(function(e){
+        b.disabled = false;
+        $('asIAR').innerHTML = '<p class="guia">' + h(e.message) + '</p>';
+      });
+    };
   }
 }
 var SUGERENCIAS_ASIS = ['¿Cuántos ensayos activos tengo?', '¿Qué mide la biometría?', '¿Dónde agrego usuarios?'];
@@ -1056,7 +1271,7 @@ function armazon(titulo, subtitulo, opciones){
                 : '<button class="hamburguesa" id="btnMenu" aria-label="Menú">' + IC.menu + '</button>') +
       (conAtras ? '' : LOGO.replace('class="logo"', 'class="logo" id="btnLogo"')) +
       '<div class="titulo"><b>' + h(titulo) + '</b><span>' + h(subtitulo || '') + '</span></div>' +
-      (opciones.derecha || '') +
+      (opciones.derecha || (SESION ? '<span class="estado-red"></span>' : '')) +
       (puede('configurar') && !opciones.campo
         ? '<button class="tuerca" id="btnConfig" title="Configuración" aria-label="Configuración">' + IC.config + '</button>' : '') +
       '<div class="yo"><button id="btnYo" aria-label="Mi cuenta">' + IC.gente.replace('<svg', '<svg width="16" height="16"') +
@@ -1075,6 +1290,7 @@ function armazon(titulo, subtitulo, opciones){
   };
   $('btnYo').onclick = menuUsuario;
   cablearLateral();
+  Red.pintar();
   $('soporteBtn').className = SESION ? 'ver' : '';
   $('asisBtn').className = SESION && !opciones.campo ? 'ver' : '';
   document.body.classList.toggle('en-campo', !!opciones.campo);
@@ -1354,6 +1570,9 @@ function arrancar(){
   if (!t) return vistaAcceso();
   app.innerHTML = '<div class="cargando" style="margin-top:30vh">Entrando…</div>';
   apiPublica('contextoSesion', t).then(function(r){
+    // El servidor dice qué versión trae. Si quedó atrás, se avisa aquí,
+    // antes de que empiecen a fallar pantallas sueltas.
+    if (Number(r.version || 0) < VERSION_PANTALLA) setTimeout(avisarServidorViejo, 600);
     if (!r.ok) { guardarToken(''); return vistaAcceso(); }
     SESION = r.sesion;
     Local.set('ens_sesion', SESION);
@@ -1494,13 +1713,18 @@ var INICIO_FILTRO = { texto: '', depto: '', estado: 'ACTIVOS' };
 
 function vistaInicio(){
   var cuerpo = armazon('Ingenio Madre Tierra', 'Módulo de ensayos', { portada: true });
-  var copia = Local.get('ens_inicio', null);
-  if (copia) pintar(copia);
-  api('inicio').then(function(r){ Local.set('ens_inicio', r); pintar(r); })
+  // Lo guardado se pinta de una vez y el servidor se consulta por detrás:
+  // así la pantalla abre al instante y sirve también sin señal.
+  var copia = Vistas.copia('inicio');
+  if (copia) pintar(copia.datos);
+  apiVista('inicio').then(pintar)
     .catch(function(e){ if (!copia) cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; fallo(e); });
+  Red.cuandoVuelva(function(){ apiVista('inicio').then(pintar).catch(function(){}); });
 
   function pintar(r){
     var cfg = r.config, avisos = [];
+    if (r._deCopia) avisos.push('<b>Sin señal.</b> Esto es lo que se guardó ' + h(haceCuanto(r._deCopia)) +
+      '. Puede consultar; lo que cambie se manda cuando vuelva la señal.');
     if (cfg && !cfg.capa) avisos.push('<b>Falta la capa de lotes.</b> Cárguela en Configuración ▸ Capa de lotes para ' +
       'que los lotes se llenen solos y el mapa de campo funcione.');
     if (cfg && !cfg.avisos) avisos.push('<b>Los avisos diarios están apagados.</b> Actívelos en Configuración ▸ Avisos.');
@@ -1610,12 +1834,18 @@ var FILTRO_DEP = {};
 
 function vistaDepartamento(id){
   var cuerpo = armazon('Departamento', '');
-  api('departamento', id).then(function(r){
+  var copia = Vistas.copia('departamento', id);
+  if (copia) pintarDepto(copia.datos);
+  apiVista('departamento', id).then(pintarDepto)
+    .catch(function(e){ if (!copia) cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; fallo(e); });
+  Red.cuandoVuelva(function(){ apiVista('departamento', id).then(pintarDepto).catch(function(){}); });
+
+  function pintarDepto(r){
     var d = r.departamento, x = r.resumen;
     var f = FILTRO_DEP[id] = FILTRO_DEP[id] || { texto: '', estado: 'ACTIVOS', zona: '' };
     armazon(d.nombre, 'Departamento');
     cuerpo = $('cuerpo');
-    cuerpo.innerHTML =
+    cuerpo.innerHTML = franjaCopia(r) +
       '<div class="cifras">' + cifra(x.ensayos, 'ensayos') + cifra(x.activos, 'activos') +
         cifra(numero(x.hectareas, 2), 'ha en parcelas') +
         cifra(x.proximas, 'esta semana', 'aviso') + cifra(x.vencidas, 'vencidas', x.vencidas ? 'alerta' : '') + '</div>' +
@@ -1666,7 +1896,7 @@ function vistaDepartamento(id){
       campo: function(){ CAMPO_FILTRO = id; ir(campoLista); },
       calidad: function(){ ir(function(){ vistaCalidad(''); }); }
     });
-  }).catch(function(e){ cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; });
+  }
 }
 
 function tarjetaEnsayo(e){
@@ -2163,24 +2393,38 @@ function vistaEnsayo(id, pestana, archivoParcelas){
   var F = null, actual = pestana || 'resumen';
   var cuerpo = armazon('Ensayo', id);
 
-  function cargar(luego){
-    return api('ensayo', id).then(function(r){
-      F = r;
-      armazon(r.ensayo.nombre, r.ensayo.deptoNombre + ' · ' + r.ensayo.id);
-      cuerpo = $('cuerpo');
-      cuerpo.innerHTML =
-        '<div class="pestanas" id="pest">' + pestanas(r).map(function(p){
-          return '<button data-p="' + p[0] + '"' + (p[0] === actual ? ' class="on"' : '') + '>' + h(p[1]) +
-            (p[2] ? ' · ' + p[2] : '') + '</button>';
-        }).join('') + '</div><div id="pCuerpo"></div>';
-      al('#pest button', 'click', function(b){
-        actual = b.dataset.p;
-        $$('#pest button').forEach(function(x){ x.className = x === b ? 'on' : ''; });
-        mostrar();
-      });
+  /**
+   * La ficha se guarda en el teléfono cada vez que se abre con señal, así
+   * que después se puede consultar sin ella. Lo guardado se pinta de una
+   * vez y el servidor se consulta por detrás.
+   */
+  function dibujar(r, luego){
+    F = r;
+    armazon(r.ensayo.nombre, r.ensayo.deptoNombre + ' · ' + r.ensayo.id);
+    cuerpo = $('cuerpo');
+    cuerpo.innerHTML = franjaCopia(r) +
+      '<div class="pestanas" id="pest">' + pestanas(r).map(function(p){
+        return '<button data-p="' + p[0] + '"' + (p[0] === actual ? ' class="on"' : '') + '>' + h(p[1]) +
+          (p[2] ? ' · ' + p[2] : '') + '</button>';
+      }).join('') + '</div><div id="pCuerpo"></div>';
+    al('#pest button', 'click', function(b){
+      actual = b.dataset.p;
+      $$('#pest button').forEach(function(x){ x.className = x === b ? 'on' : ''; });
       mostrar();
-      if (luego) luego();
-    }).catch(function(e){ cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; });
+    });
+    mostrar();
+    if (luego) luego();
+  }
+
+  function cargar(luego){
+    var copia = Vistas.copia('ensayo', id);
+    if (copia && !F) dibujar(copia.datos);
+    Red.cuandoVuelva(function(){ apiVista('ensayo', id).then(function(r){ dibujar(r); }).catch(function(){}); });
+    return apiVista('ensayo', id).then(function(r){ dibujar(r, luego); })
+      .catch(function(e){
+        if (copia) { msg('Sin señal: viendo lo guardado. Lo que cambie se manda cuando vuelva.', 'info'); return; }
+        cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>';
+      });
   }
 
   /** Las pestañas dependen de lo que tenga el ensayo: no todos llevan costos ni entregas. */
@@ -2353,32 +2597,46 @@ function vistaEnsayo(id, pestana, archivoParcelas){
     c.innerHTML =
       '<div class="cifras">' + cifra(p.n, 'parcelas') + cifra(p.conGeometria, 'con polígono', p.conGeometria < p.n ? 'aviso' : '') +
         cifra(p.bloques, 'bloques') + cifra(p.areaHa || '—', 'ha en parcelas') + '</div>' +
+      // Cuando los polígonos ya están cargados no se vuelve a pedir el
+      // archivo: eso hacía pensar que faltaba información. Se dice que ya
+      // están y queda un botón por si hay que volver a subirlos.
       (puede('editar') ? '<section class="seccion"><h2>Polígonos de las parcelas</h2>' +
-        '<p class="guia">Suba el shapefile (.zip con .shp, .dbf y .prj), GeoJSON o KML. Cada polígono se enlaza con su parcela ' +
-        'por el número; el área y el centroide se calculan del polígono.</p>' +
+        (p.conGeometria >= p.n && p.n
+          ? '<div class="listo"><b>Las ' + p.n + ' parcelas ya tienen su polígono.</b>' +
+            (p.areaHa ? ' Suman ' + numero(p.areaHa, 2) + ' ha, calculadas de los polígonos.' : '') +
+            '<div class="acciones" style="margin-top:10px">' +
+            '<button class="sec chico" id="gOtra">Volver a subir el archivo</button></div></div>'
+          : '<p class="guia">' +
+            (p.conGeometria ? 'Faltan ' + (p.n - p.conGeometria) + ' parcelas por polígono. ' : '') +
+            'Suba el shapefile (.zip con .shp, .dbf y .prj), GeoJSON o KML. Cada polígono se enlaza con su ' +
+            'parcela por tratamiento y repetición; el área sale del polígono.</p>') +
+        '<div id="gSubir"' + (p.conGeometria >= p.n && p.n ? ' class="oculto"' : '') + '>' +
         zonaArchivo('gArch', 'Suelte aquí el shapefile de parcelas (.zip), el GeoJSON o el KML', '.zip,.geojson,.json,.kml,.kmz') +
         '<div class="fila">' +
         '<div><label>Coordenadas</label><select id="gCrs">' + opciones([{ v: 'AUTO', t: 'Detectar (.prj)' }, { v: 'WGS84', t: 'Grados WGS84' },
           { v: 'UTM15N', t: 'UTM 15N' }, { v: 'UTM16N', t: 'UTM 16N' }, { v: 'GTM', t: 'GTM' }], 'AUTO') + '</select></div></div>' +
-        '<div class="acciones oculto"><button class="sec" id="gLeer">Leer archivo</button></div><div id="gMapeo"></div></section>' : '') +
+        '<div class="acciones oculto"><button class="sec" id="gLeer">Leer archivo</button></div><div id="gMapeo"></div></div></section>' : '') +
       '<section class="seccion"><h2>Mapa</h2><div class="mapa-caja"><div class="mapa" id="mapaFicha"></div></div>' +
         '<div class="leyenda" id="leyFicha"></div></section>' +
       '<section class="seccion"><h2>Croquis de bloques</h2><div id="croquis" class="croquis"><div class="cargando">Cargando…</div></div></section>' +
-      '<section class="seccion"><h2>Herramientas</h2><div class="rejilla">' +
-        (puede('editar') ? accion('aleatorizar', IC.nuevo, 'Volver a aleatorizar', 'borra parcelas y polígonos') : '') +
-        (puede('editar') ? accion('recalc', IC.revisar, 'Recalcular áreas', 'desde los polígonos') : '') +
-        accion('exportar', IC.subir, 'Exportar GeoJSON', 'para QGIS o el dron') +
-        (puede('editar') ? accion('protocolo', IC.doc, 'Protocolo en Docs', 'documento con croquis') : '') +
-      '</div></section>';
+      // Aleatorizar, recalcular áreas y exportar GeoJSON salieron: las
+      // parcelas y los bloques ya vienen definidos del SIG, el área sale
+      // sola del polígono al subirlo, y el GeoJSON no se estaba usando.
+      (puede('editar')
+        ? '<section class="seccion"><h2>Documentos</h2><div class="rejilla">' +
+            accion('protocolo', IC.doc, 'Armar el protocolo',
+                   'documento de Word con la ficha, los tratamientos, el plan y el croquis') +
+          '</div></section>'
+        : '');
 
+    if ($('gOtra')) $('gOtra').onclick = function(){
+      $('gSubir').className = ''; this.parentNode.parentNode.removeChild(this.parentNode);
+    };
     if ($('gLeer')) $('gLeer').onclick = function(){ leerArchivo($('gArch'), 20).then(mapeo).catch(fallo); };
     if ($('gArch')) $('gArch').onchange = function(){ if (this.files.length) leerArchivo(this, 20).then(mapeo).catch(fallo); };
     if (archivoParcelas) { var a = archivoParcelas; archivoParcelas = null; mapeo(a); }
 
     rutas(c, {
-      aleatorizar: function(){ operacion('generarParcelas', [id], true); },
-      recalc: function(){ operacion('recalcularGeometrias', [id]); },
-      exportar: function(){ operacion('exportarGeoJSON', [id]); },
       protocolo: function(){ operacion('generarProtocolo', [id]); }
     });
 
@@ -2934,14 +3192,53 @@ function tablaAnalisis(a){
   filas.push(['Total', a.glTrat + (a.glBloque || 0) + a.glError, a.scTotal, '', '', '']);
   return '<h3>' + h(a.variable) + ' · ' + h(a.fecha) + '</h3>' +
     '<p class="lectura">' + h(a.lectura) + '</p>' +
-    '<div class="cifras">' + cifra(a.media, 'media general') + cifra(a.cv + '%', 'coef. de variación') +
-      cifra(a.dms, 'DMS al 5 %') + cifra(p, 'valor p', a.p < 0.05 ? '' : 'alerta') + '</div>' +
+    '<div class="cifras">' + cifra(a.media, 'media general') +
+      cifra(a.cv + '%', 'coef. de variación', a.juicioCV ? a.juicioCV.nivel : '') +
+      cifra(a.hsd !== null && a.hsd !== undefined ? a.hsd : a.dms,
+            a.hsd !== null && a.hsd !== undefined ? 'Tukey al 5 %' : 'DMS al 5 %') +
+      cifra(p, 'valor p', a.p < 0.05 ? '' : 'alerta') + '</div>' +
+    // Lo que hay que mirar ANTES de creerle al análisis.
+    revisionPrevia(a) +
     '<div class="tabla-env" style="margin-bottom:14px"><table class="tabla"><tr><th>Fuente</th><th class="num">GL</th><th class="num">SC</th><th class="num">CM</th><th class="num">F</th><th class="num">p</th></tr>' +
       filas.map(function(f){ return '<tr>' + f.map(function(x, i){ return '<td' + (i ? ' class="num"' : '') + '>' + (x === '' || x === null ? '' : h(x)) + '</td>'; }).join('') + '</tr>'; }).join('') +
     '</table></div>' +
     '<div class="tabla-env"><table class="tabla"><tr><th>Tratamiento</th><th class="num">Media</th><th>Grupo</th></tr>' +
       a.medias.map(function(m){ return '<tr><td>' + h(m.trat) + '</td><td class="num">' + h(m.media) + '</td><td><b class="letra">' + h(m.letra) + '</b></td></tr>'; }).join('') +
-    '</table></div><p class="guia" style="margin-top:8px">Medias con la misma letra no difieren entre sí según la DMS al 5 %.</p>';
+    '</table></div><p class="guia" style="margin-top:8px">Medias con la misma letra no difieren entre sí según ' +
+    h(a.metodo || 'la DMS al 5 %') + '.</p>';
+}
+
+/**
+ * Lo que se revisa antes de creerle al análisis: si el ensayo estuvo
+ * bien llevado (CV), si las varianzas son parecidas (Bartlett), si
+ * faltan datos y si hay parcelas que se salen del patrón.
+ */
+function revisionPrevia(a){
+  var partes = [];
+  if (a.juicioCV && a.juicioCV.texto) {
+    partes.push('<li class="' + h(a.juicioCV.nivel) + '">' + h(a.juicioCV.texto) + '</li>');
+  }
+  if (a.bartlett) {
+    partes.push(a.bartlett.homogeneas
+      ? '<li class="ok">Las varianzas de los tratamientos son parecidas (Bartlett p = ' +
+        numero(a.bartlett.p, 3) + '): el ANDEVA es válido.</li>'
+      : '<li class="alerta">Las varianzas de los tratamientos son muy distintas (Bartlett p = ' +
+        numero(a.bartlett.p, 4) + '). El ANDEVA pierde validez: casi siempre es un dato mal ' +
+        'capturado o una parcela con un problema que no es del tratamiento.</li>');
+  }
+  if (a.faltantes && a.faltantes.length) {
+    partes.push('<li class="aviso"><b>Faltan ' + a.faltantes.length + ' dato(s):</b> ' +
+      a.faltantes.slice(0, 8).map(function(f){ return h(f.trat + 'R' + f.bloque); }).join(', ') +
+      (a.faltantes.length > 8 ? ' y otros' : '') + '.</li>');
+  }
+  if (a.atipicos && a.atipicos.length) {
+    partes.push('<li class="aviso"><b>' + a.atipicos.length + ' dato(s) atípico(s):</b> ' +
+      a.atipicos.slice(0, 6).map(function(x){
+        return h(x.trat + 'R' + x.bloque) + ' (' + (x.alto ? 'muy alto' : 'muy bajo') + ')';
+      }).join(', ') + '. No se borran: vaya a ver qué pasó en esas parcelas antes de concluir.</li>');
+  }
+  if (!partes.length) return '';
+  return '<ul class="revision">' + partes.join('') + '</ul>';
 }
 </script>
 <script>
@@ -4371,7 +4668,7 @@ function vistaConfiguracion(){
       CAMPOS: function(){ ir(function(){ vistaTabla('CAMPOS'); }); },
       CONTACTOS: function(){ ir(function(){ vistaTabla('CONTACTOS'); }); },
       usuarios: function(){ ir(vistaUsuarios); },
-      soporte: function(){ ir(function(){ vistaSoporte(r.soporteEmail); }); },
+      soporte: function(){ ir(function(){ vistaSoporte(r.soporteEmail, r.gemini); }); },
       avisos: function(){ ir(function(){ vistaAvisos(r.avisos); }); },
       calidad: function(){ ir(function(){ vistaCalidad(''); }); }
     });
@@ -4506,13 +4803,29 @@ function vistaUsuarios(){
 }
 
 /* ------------------------------ soporte ------------------------------ */
-function vistaSoporte(correo){
+function vistaSoporte(correo, gemini){
+  gemini = gemini || { configurado: false, modelo: '' };
   var cuerpo = armazon('Soporte', 'Consultas de los usuarios');
   var todos = false;
   function pintar(r){
     cuerpo.innerHTML =
       '<section class="seccion"><h2>Correo que recibe las consultas</h2><div class="fila"><div style="flex:3 1 240px"><input id="sCorreoCfg" type="email" value="' + h(correo) + '"></div>' +
       '<div><button class="sec" id="sGuardarCfg">Guardar</button></div></div></section>' +
+      '<section class="seccion"><h2>Preguntas generales con Gemini</h2>' +
+      '<p class="guia">El asistente del módulo busca contra su propia hoja y nunca sale del ingenio. ' +
+      'Aparte de eso, se puede dejar un botón para hacerle una pregunta general de agronomía a Gemini, ' +
+      'la inteligencia artificial de Google. <b>Solo viaja la pregunta que la persona escriba</b>: ningún ' +
+      'ensayo, lote, usuario ni dato capturado. Aun así, en el plan gratuito de Google esas preguntas ' +
+      'pueden servirle para entrenar sus modelos, así que la pantalla se lo advierte a quien pregunta.</p>' +
+      '<p class="guia">La llave se saca gratis en <b>aistudio.google.com</b> ▸ Get API key. Se guarda aquí, ' +
+      'en el libro, nunca en GitHub.</p>' +
+      '<div class="fila"><div style="flex:3 1 240px"><label>Llave de Gemini</label>' +
+      '<input id="sIAKey" type="password" autocomplete="off" placeholder="' +
+      (gemini.configurado ? 'ya está puesta — escriba una nueva para cambiarla' : 'pegue aquí la llave') + '"></div>' +
+      '<div style="flex:2 1 160px"><label>Modelo</label><input id="sIAModelo" value="' + h(gemini.modelo) + '"></div>' +
+      '<div><label>&nbsp;</label><button class="sec" id="sIAGuardar">Guardar</button></div></div>' +
+      (gemini.configurado ? '<p class="guia">Está activo. Para apagarlo, borre la llave y guarde.</p>' : '') +
+      '</section>' +
       '<section class="seccion"><h2>Consultas</h2>' +
       (r.casos.length ? r.casos.map(function(c){
         return '<div class="nota" style="margin-left:0"><div class="cab"><b>' + h(c.asunto) + '</b>' + chipEstado(c.estado) +
@@ -4522,6 +4835,13 @@ function vistaSoporte(correo){
       }).join('') : '<p class="vacio">No hay consultas abiertas.</p>') + '</section>';
     $('sGuardarCfg').onclick = function(){
       api('guardarAjustes', { soporteEmail: val('sCorreoCfg') }).then(function(x){ correo = val('sCorreoCfg'); msg(x.mensaje, 'ok'); }).catch(fallo);
+    };
+    $('sIAGuardar').onclick = function(){
+      var b = this; b.disabled = true;
+      api('guardarAjustes', { geminiLlave: val('sIAKey'), geminiModelo: val('sIAModelo') })
+        .then(function(){ b.disabled = false; $('sIAKey').value = '';
+          msg('Ajustes de Gemini guardados.', 'ok'); })
+        .catch(function(e){ b.disabled = false; fallo(e); });
     };
     al('[data-caso]', 'click', function(b){
       var c = r.casos.filter(function(x){ return x.id === b.dataset.caso; })[0];
