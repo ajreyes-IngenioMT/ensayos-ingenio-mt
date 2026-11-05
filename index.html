@@ -200,6 +200,46 @@
             letter-spacing:0;font-size:14px;color:var(--verde)}
   .foto-btn svg{width:19px;height:19px}
   .fila-p .quien{color:var(--verde);font-weight:700}
+  /* ------- franja de versión nueva ------- */
+  .franja-nueva{position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;background:var(--ink);color:#fff;
+    border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    box-shadow:0 4px 18px rgba(0,0,0,.3);font-size:14px}
+  .franja-nueva span{flex:1;min-width:150px}
+  .franja-nueva button{padding:9px 16px;font-size:14px}
+  .franja-nueva button.sec{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff}
+  .franja-nueva button.sec:hover{background:rgba(255,255,255,.12);color:#fff}
+
+  /* ------- barra que se corre, y el signo de pregunta de las etiquetas ------- */
+  .corredera{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
+  .corredera input[type=range]{flex:1;min-width:0;height:34px;-webkit-appearance:none;appearance:none;background:transparent;
+    touch-action:pan-y;cursor:pointer}
+  .corredera input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:999px;
+    background:linear-gradient(90deg,var(--verde-tenue),var(--verde-tenue));border:1px solid var(--linea)}
+  .corredera input[type=range]::-moz-range-track{height:10px;border-radius:999px;background:var(--verde-tenue);border:1px solid var(--linea)}
+  .corredera input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;
+    margin-top:-11px;border-radius:50%;background:var(--verde);border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+  .corredera input[type=range]::-moz-range-thumb{width:30px;height:30px;border-radius:50%;background:var(--verde);
+    border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.35)}
+  .corredera .paso{flex:0 0 auto;width:38px;height:38px;padding:0;font-size:20px;line-height:1;border-radius:50%;
+    background:var(--papel);border:1.5px solid var(--linea);color:var(--ink)}
+  .corredera .corredera-val{flex:0 0 auto;min-width:66px;text-align:right;white-space:nowrap;
+    font:700 20px var(--mono);color:var(--verde)}
+  .lab-ayuda{display:flex;align-items:center;gap:6px}
+  .lab-ayuda label{margin-bottom:0}
+  .ayuda-ico{background:none;border:0;padding:2px;color:var(--tenue);line-height:0}
+  .ayuda-ico:hover{background:none;color:var(--verde)}
+  .ayuda-ico svg{width:17px;height:17px;margin:0}
+  .ayuda-caja{border:1px solid var(--linea);border-left:3px solid var(--verde);border-radius:8px;
+    padding:8px 11px;margin:4px 0 2px;background:var(--papel);font-size:13px}
+  .ayuda-caja p{margin:3px 0}
+  .ayuda-caja b{color:var(--ink)}
+  .esp-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .esp-cab b{font-size:15px;color:var(--verde)}
+  .esp-cab .x{background:none;border:0;color:var(--tenue);font-size:20px;line-height:1;padding:0 6px}
+  .esp-cab .x:hover{color:var(--error);background:none}
+  .resta{margin:2px 0 4px;font-size:13.5px;font-weight:600;color:var(--tenue)}
+  .resta.ok{color:var(--verde)}
+  .resta.mal{color:var(--error)}
   .ayuda-var{margin-top:8px;border:1px solid var(--linea);border-radius:8px;padding:8px 10px;background:var(--papel)}
   .ayuda-var summary{cursor:pointer;font-size:13px;color:var(--verde);font-weight:600}
   .ayuda-var .tabla td{font-size:12.5px}
@@ -623,6 +663,13 @@
   .medida.surcos .lista .x:hover{color:var(--error);background:none}
   .medida.surcos .bt{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .medida.surcos .bt button{padding:11px 8px;font-size:13px}
+  /* Punto de la medición. Se arrastra, así que la zona que recibe el dedo
+     es más grande que el puntito que se ve. */
+  .pt-medida{display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none}
+  .pt-medida i{width:13px;height:13px;border-radius:50%;background:#E2A400;border:2.5px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.45)}
+  .pt-medida:active{cursor:grabbing}
+  .pt-medida:active i{width:17px;height:17px}
   /* Semáforo de conexión: verde en línea, naranja esperando, rojo sin señal. */
   .estado-red{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
     border-radius:12px;padding:4px 10px;white-space:nowrap;background:var(--verde-tenue);color:var(--verde)}
@@ -705,7 +752,7 @@ var ESPERA_MAXIMA = 180000;   // Apps Script permite hasta 6 minutos por llamada
  * disponible: asistente») y uno cree que el módulo está malo.
  * Sube junto con VERSION_SERVIDOR de Code.gs.
  */
-var VERSION_PANTALLA = 5;
+var VERSION_PANTALLA = 6;
 var SERVIDOR_VIEJO = false;
 var SESION = null;
 var PARAMS = (function(){
@@ -750,23 +797,96 @@ function esIOS(){
   } catch (e) { return false; }
 }
 
+/**
+ * Aviso de versión nueva, con su botón.
+ *
+ * En el teléfono la aplicación casi nunca se cierra de verdad: se deja
+ * abierta y se vuelve a ella, así que por sí sola podía quedarse semanas
+ * con la versión vieja. Por eso ahora aparece una franja arriba con el
+ * botón «Actualizar», y la pantalla se recarga cuando la persona lo
+ * toca, no a media captura.
+ */
+var REG_SW = null;
+/** Busca una versión nueva a propósito; la rellena prepararApp(). */
+var buscarActualizacion = function(){
+  msg(EN_APPS_SCRIPT
+    ? 'Aquí la versión la cambia quien implementa el proyecto en Apps Script.'
+    : 'Este navegador no guarda la aplicación: con recargar la pantalla ya queda al día.', 'info');
+};
+function ofrecerActualizar(){
+  if ($('franjaNueva')) return;
+  HAY_VERSION_NUEVA = true;
+  var d = document.createElement('div');
+  d.id = 'franjaNueva';
+  d.className = 'franja-nueva';
+  d.innerHTML = '<span>Hay una versión nueva del módulo.</span>' +
+    '<button id="btnActualizar">Actualizar</button>' +
+    '<button class="sec" id="btnDespues">Después</button>';
+  document.body.appendChild(d);
+  $('btnDespues').onclick = function(){ d.parentNode.removeChild(d); };
+  $('btnActualizar').onclick = function(){
+    var pendientes = (typeof Cola !== 'undefined' && Cola.pendientes) ? Cola.pendientes().length : 0;
+    if (pendientes && !confirm('Quedan ' + pendientes + ' captura(s) por enviar. Al actualizar no se pierden, ' +
+        'pero es mejor hacerlo con señal. ¿Actualizar de todos modos?')) return;
+    $('btnActualizar').disabled = true;
+    $('btnActualizar').textContent = 'Actualizando…';
+    if (REG_SW && REG_SW.waiting) {
+      REG_SW.waiting.postMessage('actualizar');
+      setTimeout(recargarLimpio, 2500);   // por si el aviso de cambio no llega
+    } else recargarLimpio();
+  };
+}
+
+/** Recarga pidiendo la pantalla al servidor, no la copia guardada. */
+function recargarLimpio(){
+  try {
+    var u = location.href.replace(/[?&]v=\d+/, '');
+    location.replace(u + (u.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now());
+  } catch (e) { location.reload(); }
+}
+
 function prepararApp(){
   if (EN_APPS_SCRIPT) return;
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   try {
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if (HAY_VERSION_NUEVA) recargarLimpio();
+    });
     navigator.serviceWorker.register('sw.js').then(function(reg){
+      REG_SW = reg;
+      // Si ya había una versión nueva esperando de la vez pasada.
+      if (reg.waiting && navigator.serviceWorker.controller) ofrecerActualizar();
       // Cuando entra una versión nueva se avisa, no se cambia a media
       // captura: el técnico decide cuándo recargar.
       reg.addEventListener('updatefound', function(){
         var nuevo = reg.installing;
         if (!nuevo) return;
         nuevo.addEventListener('statechange', function(){
-          if (nuevo.state === 'installed' && navigator.serviceWorker.controller) {
-            HAY_VERSION_NUEVA = true;
-            msg('Hay una versión nueva del módulo. Ciérrelo y ábralo otra vez cuando termine lo que está haciendo.', 'info', true);
-          }
+          if (nuevo.state === 'installed' && navigator.serviceWorker.controller) ofrecerActualizar();
         });
       });
+      // Se revisa al abrir, al volver a la aplicación y cada media hora:
+      // en el teléfono la pantalla se queda abierta días enteros.
+      var ultima = 0;
+      function revisar(){
+        if (!navigator.onLine || Date.now() - ultima < 120000) return;
+        ultima = Date.now();
+        try { reg.update(); } catch (e) {}
+      }
+      buscarActualizacion = function(){
+        if (!navigator.onLine) return msg('Sin señal no se puede buscar la versión nueva.', 'info');
+        msg('Buscando…', 'info');
+        ultima = Date.now();
+        reg.update().then(function(){
+          setTimeout(function(){
+            if (!$('franjaNueva')) msg('Ya tiene la última versión del módulo.', 'ok');
+          }, 1200);
+        }).catch(function(){ msg('No se pudo revisar si hay versión nueva.', 'err'); });
+      };
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) revisar(); });
+      window.addEventListener('online', revisar);
+      setInterval(revisar, 1800000);
+      setTimeout(revisar, 4000);
     }).catch(function(){ /* sin trabajador de servicio se sigue igual, solo que sin guardar el mapa */ });
   } catch (e) {}
 
@@ -1429,6 +1549,8 @@ function lateralHTML(){
       '<button class="lat-item" data-lat="asistente"><i>' + IC.buscar + '</i><span>Asistente</span></button>' +
       (puedeInstalarse() ? '<button class="lat-item" data-lat="instalar"><i>' + IC.telefono +
         '</i><span>Instalar en el teléfono</span></button>' : '') +
+      (EN_APPS_SCRIPT ? '' : '<button class="lat-item" data-lat="version"><i>' + IC.revisar +
+        '</i><span>Buscar versión nueva</span></button>') +
       '<button class="lat-item" data-lat="soporte"><i>' + IC.soporte + '</i><span>Soporte</span></button>' +
     '</div>' +
     '<div class="lat-pie"><b>' + h(SESION.nombre) + '</b><span>' + h(SESION.rolNombre || '') + '</span></div>' +
@@ -1451,6 +1573,7 @@ function cablearLateral(){
     if (d === 'config') return ir(vistaConfiguracion);
     if (d === 'instalar') return instalarApp();
     if (d === 'asistente') return abrirAsistente();
+    if (d === 'version') return buscarActualizacion();
     if (d === 'soporte') return abrirSoporte();
   }, lat);
   var velo = document.getElementById('veloLateral');
@@ -1476,6 +1599,7 @@ function menuUsuario(e){
     '<button data-m="clave">Cambiar mi clave</button>' +
     '<button data-m="soporte">Soporte</button>' +
     (puedeInstalarse() ? '<button data-m="instalar">Instalar en el teléfono</button>' : '') +
+    (EN_APPS_SCRIPT ? '' : '<button data-m="version">Buscar versión nueva</button>') +
     '<button data-m="salir">Salir</button>';
   $('btnYo').parentNode.appendChild(m);
   function cerrar(){ if (m.parentNode) m.parentNode.removeChild(m); document.removeEventListener('click', cerrar); }
@@ -1483,7 +1607,7 @@ function menuUsuario(e){
   al('[data-m]', 'click', function(b){
     cerrar();
     ({ inicio: irInicio, clave: cambiarClave, soporte: abrirSoporte,
-       instalar: instalarApp, salir: salir })[b.dataset.m]();
+       instalar: instalarApp, version: function(){ buscarActualizacion(); }, salir: salir })[b.dataset.m]();
   }, m);
 }
 
@@ -3606,6 +3730,8 @@ var MapaCampo = {
       else mapa.setView([14.2, -91.2], 12);
 
       if (op.herramientas !== false) M.herramientas(contenedor);
+      window.__M = M;   // para revisar el mapa desde la consola si algo falla
+
       M.iniciarGPS();
       mapa.on('click', function(e){ if (M.midiendo) M.agregarPunto([e.latlng.lat, e.latlng.lng]); });
       setTimeout(function(){ mapa.invalidateSize(); }, 120);
@@ -3659,7 +3785,25 @@ var MapaCampo = {
       panel.className = 'medida oculto';
       cont.appendChild(panel);
       M.panel = panel;
+
+      /*
+       * Los botones del panel no deben llegar al mapa.
+       *
+       * Leaflet ya trae un candado para esto, pero no alcanza aquí: al
+       * tocar «Limpiar» o «Deshacer» el panel se vuelve a dibujar y el
+       * botón desaparece del documento en pleno toque; cuando el mapa
+       * revisa de dónde venía, el botón ya no cuelga del panel y lo toma
+       * como un toque en el terreno. Eso era lo que ponía un punto justo
+       * detrás del botón. Se corta aquí, en el panel, que sí sigue en su
+       * lugar, y de paso se corta el arrastre y el acercamiento con la
+       * rueda cuando el dedo está sobre el panel.
+       */
       L.DomEvent.disableClickPropagation(caja); L.DomEvent.disableClickPropagation(panel);
+      ['click', 'dblclick', 'mousedown', 'pointerdown', 'touchstart', 'wheel'].forEach(function(ev){
+        [caja, panel].forEach(function(el){
+          el.addEventListener(ev, function(e){ e.stopPropagation(); });
+        });
+      });
       al('[data-h]', 'click', function(b){
         var que = b.dataset.h;
         if (que === 'gps') {
@@ -3680,13 +3824,31 @@ var MapaCampo = {
       M.panel.className = 'medida';
       M.pintarMedida();
     };
-    M.agregarPunto = function(ll){
-      M.puntos.push(ll);
-      M.marcas.push(L.circleMarker(ll, { radius: 5, color: '#fff', weight: 2, fillColor: '#E2A400', fillOpacity: 1, interactive: false }).addTo(M.mapa));
+    /** Vuelve a trazar la línea (o el polígono del área) con los puntos que hay. */
+    M.redibujar = function(){
       if (M.trazo) M.mapa.removeLayer(M.trazo);
       M.trazo = (M.midiendo === 'area' && M.puntos.length > 2)
         ? L.polygon(M.puntos, { color: '#E2A400', weight: 3, fillOpacity: .15, interactive: false }).addTo(M.mapa)
         : L.polyline(M.puntos, { color: '#E2A400', weight: 3, dashArray: '6 6', interactive: false }).addTo(M.mapa);
+    };
+    /**
+     * Un punto de la medición. Se puede arrastrar: en el campo casi nunca
+     * queda bien al primer toque, y antes había que borrar todo y empezar
+     * de nuevo. Al moverlo, la distancia se recalcula sola.
+     */
+    M.agregarPunto = function(ll){
+      var i = M.puntos.length;
+      M.puntos.push([ll[0], ll[1]]);
+      var m = L.marker(ll, { draggable: true, keyboard: false, zIndexOffset: 600,
+        icon: L.divIcon({ className: 'pt-medida', iconSize: [26, 26], iconAnchor: [13, 13], html: '<i></i>' }) }).addTo(M.mapa);
+      m.on('drag', function(e){
+        var q = e.target.getLatLng();
+        M.puntos[i] = [q.lat, q.lng];
+        M.redibujar();
+        if (M.alPunto) M.alPunto(); else M.pintarMedida();
+      });
+      M.marcas.push(m);
+      M.redibujar();
       if (M.alPunto) M.alPunto(); else M.pintarMedida();
     };
     M.pintarMedida = function(){
@@ -3699,6 +3861,7 @@ var MapaCampo = {
           '<b>' + numero(a / 10000, 2) + ' ha</b> · ' + numero(a, 0).toLocaleString('es-GT') + ' m²<br><span class="tenue">perímetro ' + formatoM(per) + '</span>';
       } else {
         txt = M.puntos.length < 2 ? 'Toque dos o más puntos en el mapa' : '<b>' + formatoM(d) + '</b>' +
+          '<br><span class="tenue">Arrastre un punto si le quedó corrido.</span>' +
           (M.puntos.length > 2 ? '<br><span class="tenue">último tramo ' + formatoM(distanciaM(M.puntos[M.puntos.length - 2], M.puntos[M.puntos.length - 1])) + '</span>' : '');
       }
       M.panel.innerHTML = (M.midiendo === 'area' ? 'Área' : 'Distancia') + ': ' + txt +
@@ -3744,7 +3907,8 @@ var MapaCampo = {
           (M.puntos.length < 2
             ? '<p class="tenue">Toque el principio y el final del surco en el mapa. ' +
               'Puede usar «+ punto GPS» caminando sobre el surco.</p>'
-            : '<b class="grande">' + formatoM(d) + '</b>') +
+            : '<b class="grande">' + formatoM(d) + '</b>' +
+              '<p class="tenue">Arrastre un punto si le quedó corrido.</p>') +
           (n ? '<div class="lista">' + surcos.map(function(x, i){
                  return '<span>Surco ' + (i + 1) + ': <b>' + x.toFixed(2) + ' m</b>' +
                    '<button class="x" data-s="quitar:' + i + '" title="Quitar">×</button></span>';
@@ -4438,147 +4602,214 @@ function campoCaptura(id, paqInicial, planElegido){
    * especie se describe qué es, cómo crece y en qué etapa va, con botones
    * grandes porque esto se llena de pie en el campo.
    */
-  function formCobertura(){
-    return '<label>Porcentaje de control (%)</label>' +
-      '<div class="opciones">' + [50, 60, 70, 80, 85, 90, 95, 100].map(function(n){
-        return '<button type="button" class="opcion chica ctrlB" data-val="' + n + '">' + n + ' %</button>';
-      }).join('') + '</div>' +
-      '<input id="hCtrl" type="text" inputmode="decimal" data-num="1" readonly min="0" max="100" ' +
-        'autocomplete="off" class="grande" placeholder="u otro valor">' +
-      '<div class="ya" id="hControl" style="background:var(--verde-tenue);color:var(--verde)">Escriba el control</div>' +
-      '<label>De esa maleza, ¿qué especies son? (suma 100 %)</label>' +
-      '<div id="hEspecies"></div>' +
-      '<div class="acciones" style="margin-top:6px"><button class="sec chico" id="hMasEsp">Agregar especie</button>' +
-      '<span class="tenue" id="hSuma"></span></div>';
+  /**
+   * Etiqueta con su signo de pregunta en la esquina. Al tocarlo se abre
+   * la explicación de cada término. Va aquí porque no todos los que
+   * capturan saben qué es una ciperácea o qué quiere decir «control», y
+   * preguntarle a alguien en media finca no siempre se puede.
+   */
+  function etiquetaAyuda(texto, id, filas){
+    return '<div class="lab-ayuda"><label>' + texto + '</label>' +
+      '<button type="button" class="ayuda-ico" data-ayuda="' + id + '" aria-label="Qué es esto">' + IC.soporte + '</button></div>' +
+      '<div class="ayuda-caja oculto" id="ay_' + id + '">' + filas.map(function(f){
+        return '<p><b>' + h(f[0]) + '</b> ' + h(f[1]) + '</p>';
+      }).join('') + '</div>';
   }
 
   /**
-   * Fila de botones grandes: se toca uno y queda marcado. Cada opción
-   * lleva su explicación debajo, chiquita, para quien no sabe qué es una
-   * ciperácea o una maleza decumbente; en el teléfono también sale al
-   * dejar el dedo encima.
+   * Barra que se corre con el dedo, con el número al lado y los botones
+   * − y + para afinar de uno en uno: con el dedo la barra nunca cae justo
+   * en el número que uno quiere. El valor queda en una casilla escondida
+   * dentro de la misma barra, que es de donde lo lee el guardado.
+   */
+  function corredera(clase, valor, idGuarda){
+    var vacia = valor === '' || valor === null || valor === undefined;
+    return '<div class="corredera">' +
+      '<button type="button" class="paso" data-paso="-1" aria-label="Bajar uno">−</button>' +
+      '<input type="range" class="' + clase + '" min="0" max="100" step="1" value="' + (vacia ? 0 : h(valor)) + '">' +
+      '<button type="button" class="paso" data-paso="1" aria-label="Subir uno">+</button>' +
+      '<b class="corredera-val">' + (vacia ? '—' : h(valor) + ' %') + '</b>' +
+      '<input type="hidden" class="corredera-guarda"' + (idGuarda ? ' id="' + idGuarda + '"' : '') +
+        ' value="' + (vacia ? '' : h(valor)) + '"></div>';
+  }
+
+  function formCobertura(){
+    return etiquetaAyuda('Porcentaje de control', 'ctrl', [
+        ['Control', 'Cuánto del área quedó limpia donde se aplicó. 100 % es que no quedó nada de maleza; 0 % es que quedó igual que antes.'],
+        ['Cobertura', 'Lo contrario del control: la maleza que sí quedó. Se calcula sola, no hay que anotarla.']]) +
+      corredera('ctrlB', '', 'hCtrl') +
+      '<div class="ya" id="hControl" style="background:var(--verde-tenue);color:var(--verde)">Corra la barra hasta el control que vio</div>' +
+      etiquetaAyuda('¿De qué malezas es lo que quedó?', 'esp', [
+        ['Cómo se llena', 'Reparta entre las malezas que vio la maleza que quedó, hasta completar 100 %. Si solo hay una, va 100 %.'],
+        ['Ojo', 'No es el porcentaje del lote: es el porcentaje de la maleza que quedó.']]) +
+      '<div id="hEspecies"></div>' +
+      '<div class="resta" id="hSuma"></div>' +
+      '<div class="acciones" style="margin-top:6px"><button class="sec chico" id="hMasEsp">Agregar maleza 2</button></div>';
+  }
+
+  /**
+   * Fila de botones grandes: se toca uno y queda marcado. La explicación
+   * de cada término ya no va metida en el botón (ocupaba media pantalla
+   * en el teléfono): está en el signo de pregunta de la etiqueta, y al
+   * dejar el dedo encima del botón también sale.
    */
   function botonera(clase, opciones, valor){
     if (!opciones || !opciones.length) return '';
     return '<div class="opciones">' + opciones.map(function(o){
       var v = o && o.valor !== undefined ? o.valor : o;
       var nota = o && o.nota ? o.nota : '';
-      return '<button type="button" class="opcion ' + clase + (v === valor ? ' on' : '') +
-        '" data-val="' + h(v) + '"' + (nota ? ' title="' + h(nota) + '"' : '') + '>' + h(v) +
-        (nota ? '<em>' + h(nota) + '</em>' : '') + '</button>';
+      return '<button type="button" class="opcion una ' + clase + (v === valor ? ' on' : '') +
+        '" data-val="' + h(v) + '"' + (nota ? ' title="' + h(nota) + '"' : '') + '>' + h(v) + '</button>';
     }).join('') + '</div>';
   }
 
   function cablearCobertura(){
-    var lista = [{}];
+    var lista = [{ especie: '', pct: '100', tipo: '' }];
+
     function pintar(){
       var malezas = S.paq.malezas || [];
       $('hEspecies').innerHTML = lista.map(function(x, i){
         var enCatalogo = malezas.some(function(m){ return m.valor === x.especie; });
+        var otra = !!x.especie && !enCatalogo;
         return '<div class="esp">' +
-          '<label style="margin-top:0">¿Qué maleza es?</label>' +
-          '<div class="opciones">' + malezas.map(function(m){
-            return '<button type="button" class="opcion eEsp' + (x.especie === m.valor ? ' on' : '') +
-              '" data-val="' + h(m.valor) + '" data-tipo="' + h(m.tipo || '') + '" data-habito="' + h(m.habito || '') + '">' +
-              h(nombreCorto(m.valor)) + '</button>';
-          }).join('') +
-          '<button type="button" class="opcion eOtra' + (x.especie && !enCatalogo ? ' on' : '') + '">Otra…</button></div>' +
-          '<input class="eNom" placeholder="Escriba el nombre común" value="' + h(enCatalogo ? '' : (x.especie || '')) + '"' +
-            (x.especie && !enCatalogo ? '' : ' style="display:none"') + '>' +
-          '<label>¿Cuánto de la maleza es esta? (%)</label>' +
-          '<div class="opciones">' + [10, 20, 25, 30, 40, 50, 60, 75, 100].map(function(n){
-            return '<button type="button" class="opcion chica ePctB' + (String(x.pct) === String(n) ? ' on' : '') +
-              '" data-val="' + n + '">' + n + ' %</button>';
-          }).join('') + '</div>' +
-          '<input class="ePct" type="text" inputmode="decimal" data-num="1" readonly min="0" max="100" ' +
-            'placeholder="u otro %" value="' + h(x.pct || '') + '">' +
+          '<div class="esp-cab"><b>Maleza ' + (i + 1) + '</b>' +
+            (lista.length > 1 ? '<button type="button" class="x" data-quitar-e="' + i + '" aria-label="Quitar">×</button>' : '') +
+          '</div>' +
+          '<select class="eSel">' +
+            '<option value=""' + (x.especie ? '' : ' selected') + '>Elija la maleza…</option>' +
+            malezas.map(function(m){
+              return '<option value="' + h(m.valor) + '" data-tipo="' + h(m.tipo || '') + '" data-habito="' + h(m.habito || '') + '"' +
+                (x.especie === m.valor ? ' selected' : '') + '>' + h(m.valor) + '</option>';
+            }).join('') +
+            '<option value="__otra"' + (otra ? ' selected' : '') + '>Otra…</option></select>' +
+          '<input class="eNom" placeholder="Escriba el nombre común" value="' + h(otra ? x.especie : '') + '"' +
+            (otra ? '' : ' style="display:none"') + '>' +
+          corredera('ePctB', x.pct === undefined ? 0 : x.pct) +
           (S.paq.tiposMaleza && S.paq.tiposMaleza.length
-            ? '<label>Tipo de maleza</label>' + botonera('eTipo', S.paq.tiposMaleza, x.tipo) : '') +
-          (S.paq.habitos && S.paq.habitos.length
-            ? '<label>Hábito de crecimiento</label>' + botonera('eHabito', S.paq.habitos, x.habito) : '') +
-          (S.paq.etapas && S.paq.etapas.length
-            ? '<label>Etapa de desarrollo</label>' + botonera('eEtapa', S.paq.etapas, x.etapa) : '') +
-          '<div class="acciones" style="margin-top:8px"><button class="sec chico" data-quitar-e="' + i + '">Quitar</button></div>' +
+            ? etiquetaAyuda('Tipo de maleza', 'tipo' + i, S.paq.tiposMaleza.map(function(t){ return [t.valor, t.nota || '']; })) +
+              botonera('eTipo', S.paq.tiposMaleza, x.tipo) : '') +
         '</div>';
       }).join('');
 
       al('[data-quitar-e]', 'click', function(b, ev){
         ev.preventDefault(); leer(); lista.splice(Number(b.dataset.quitarE), 1);
-        if (!lista.length) lista = [{}]; pintar();
+        if (!lista.length) lista = [{ especie: '', pct: '100', tipo: '' }];
+        pintar();
       }, $('hEspecies'));
-      // los botones de una fila se comportan como una sola respuesta
-      ['eEsp', 'eTipo', 'eHabito', 'eEtapa', 'ePctB'].forEach(function(clase){
-        al('.' + clase, 'click', function(b, ev){
-          ev.preventDefault();
-          var caja = b.parentNode, ya = b.className.indexOf(' on') >= 0;
-          $$('.' + clase, caja).forEach(function(o){ o.className = o.className.replace(' on', ''); });
-          if (!ya) b.className += ' on';
-          if (clase === 'eEsp') {
-            var esp = b.closest('.esp');
-            esp.querySelector('.eOtra').className = 'opcion eOtra';
-            esp.querySelector('.eNom').style.display = 'none';
-            // La especie ya trae su tipo y su hábito: se marcan solos y
-            // en el campo quedan dos cosas menos que tocar.
-            if (!ya) marcarPorValor(esp, 'eTipo', b.dataset.tipo), marcarPorValor(esp, 'eHabito', b.dataset.habito);
-          }
-          if (clase === 'ePctB') b.closest('.esp').querySelector('.ePct').value = ya ? '' : b.dataset.val;
-          suma();
-        }, $('hEspecies'));
-      });
-      al('.eOtra', 'click', function(b, ev){
-        ev.preventDefault();
-        var esp = b.closest('.esp');
-        $$('.eEsp', esp).forEach(function(o){ o.className = o.className.replace(' on', ''); });
-        b.className = 'opcion eOtra on';
+
+      al('.eSel', 'change', function(s){
+        var esp = s.closest('.esp');
+        var op = s.options[s.selectedIndex];
         var caja = esp.querySelector('.eNom');
-        caja.style.display = ''; caja.focus();
+        if (s.value === '__otra') { caja.style.display = ''; caja.focus(); }
+        else {
+          caja.style.display = 'none'; caja.value = '';
+          // La especie del catálogo ya trae su tipo: se marca solo y en
+          // el campo queda una cosa menos que tocar.
+          marcarPorValor(esp, 'eTipo', op.dataset.tipo || '');
+        }
+        suma();
       }, $('hEspecies'));
-      al('.esp input', 'input', suma, $('hEspecies'));
+
+      al('.eTipo', 'click', function(b, ev){
+        ev.preventDefault();
+        var caja = b.parentNode, ya = b.className.indexOf(' on') >= 0;
+        $$('.eTipo', caja).forEach(function(o){ o.className = o.className.replace(' on', ''); });
+        if (!ya) b.className += ' on';
+      }, $('hEspecies'));
+
+      cablearCorrederas($('hEspecies'), suma);
+      al('.eNom', 'input', suma, $('hEspecies'));
+      cablearAyudas($('cHoja'));
       suma();
     }
 
-    /** "Coyolillo (Cyperus rotundus)" se muestra como "Coyolillo". */
-    function nombreCorto(m){ return String(m).replace(/\s*\(.*\)\s*$/, ''); }
-
     /** Marca el botón de esa fila cuyo valor coincide. */
     function marcarPorValor(esp, clase, valor){
-      if (!valor) return;
       $$('.' + clase, esp).forEach(function(o){
-        o.className = 'opcion ' + clase + (o.dataset.val === valor ? ' on' : '');
+        o.className = 'opcion ' + clase + (valor && o.dataset.val === valor ? ' on' : '');
       });
     }
 
     function leer(){
       lista = $$('.esp', $('cHoja')).map(function(d){
-        function marcado(c){ var b = d.querySelector('.' + c + '.on'); return b ? b.dataset.val : ''; }
-        var delCatalogo = marcado('eEsp');
-        return { especie: delCatalogo || d.querySelector('.eNom').value.trim(),
-                 pct: d.querySelector('.ePct').value.trim(),
-                 tipo: marcado('eTipo'), habito: marcado('eHabito'), etapa: marcado('eEtapa') };
+        var sel = d.querySelector('.eSel');
+        var op = sel.options[sel.selectedIndex] || {};
+        var marcado = d.querySelector('.eTipo.on');
+        return { especie: sel.value === '__otra' ? d.querySelector('.eNom').value.trim() : sel.value,
+                 pct: d.querySelector('.corredera-guarda').value.trim(),
+                 tipo: marcado ? marcado.dataset.val : '',
+                 // El hábito es de la especie, no de lo que se ve en el lote:
+                 // viene del catálogo y no se pregunta en el campo.
+                 habito: (op.dataset || {}).habito || '', etapa: '' };
       });
       return lista;
     }
+
+    /** Lo que falta para completar el 100 % de la maleza que quedó. */
     function suma(){
       var t = leer().reduce(function(a, x){ return a + (Number(x.pct) || 0); }, 0);
-      $('hSuma').textContent = t ? 'Suma ' + numero(t, 0) + ' %' + (Math.abs(t - 100) > 2 ? ' — debería sumar 100' : ' ✓') : '';
-      $('hSuma').style.color = t && Math.abs(t - 100) > 2 ? 'var(--error)' : 'var(--tenue)';
+      var falta = Math.round((100 - t) * 10) / 10;
+      var caja = $('hSuma');
+      caja.textContent = falta > 0 ? 'Falta repartir ' + numero(falta, 0) + ' %'
+        : (falta < 0 ? 'Se pasó por ' + numero(-falta, 0) + ' %' : 'Listo: suma 100 %');
+      caja.className = 'resta' + (falta === 0 ? ' ok' : (falta < 0 ? ' mal' : ''));
+      $('hMasEsp').textContent = 'Agregar maleza ' + (lista.length + 1);
     }
-    $('hMasEsp').onclick = function(){ leer(); lista.push({}); pintar(); };
-    $('hCtrl').oninput = function(){
-      var c = Number(this.value);
-      $('hControl').textContent = this.value === '' ? 'Escriba el control'
-        : (c >= 0 && c <= 100
-            ? 'Cobertura de maleza: ' + numero(100 - c, 1) + ' %. Ese 100 % se reparte entre las especies.'
-            : 'El control va de 0 a 100 %');
+
+    $('hMasEsp').onclick = function(){
+      leer();
+      var usado = lista.reduce(function(a, x){ return a + (Number(x.pct) || 0); }, 0);
+      lista.push({ especie: '', pct: String(Math.max(0, Math.round(100 - usado))), tipo: '' });
+      pintar();
     };
-    al('.ctrlB', 'click', function(b, ev){
-      ev.preventDefault();
-      $$('.ctrlB').forEach(function(o){ o.className = o.className.replace(' on', ''); });
-      b.className += ' on';
-      $('hCtrl').value = b.dataset.val;
-      $('hCtrl').oninput.call($('hCtrl'));
-    }, $('cHoja'));
+
+    // la barra del control, que va arriba y fuera de la lista de malezas
+    function verControl(){
+      var c = $('hCtrl').value;
+      $('hControl').textContent = c === '' ? 'Corra la barra hasta el control que vio'
+        : 'Quedó ' + numero(100 - Number(c), 1) + ' % de maleza. Ese 100 % se reparte entre las malezas de abajo.';
+    }
+    cablearCorrederas($('cHoja'), verControl);
+    cablearAyudas($('cHoja'));
     pintar();
+  }
+
+  /** Deja listas las barras que todavía no se hayan cableado. */
+  function cablearCorrederas(raiz, alCambiar){
+    $$('.corredera', raiz).forEach(function(caja){
+      var r = caja.querySelector('input[type="range"]');
+      if (!r || r.dataset.listo) return;
+      r.dataset.listo = '1';
+      var v = caja.querySelector('.corredera-val');
+      var guarda = caja.querySelector('.corredera-guarda');
+      function ver(){
+        v.textContent = r.value + ' %';
+        if (guarda) guarda.value = r.value;
+        if (alCambiar) alCambiar();
+      }
+      ['input', 'change'].forEach(function(ev){ r.addEventListener(ev, ver); });
+      $$('.paso', caja).forEach(function(b){
+        b.addEventListener('click', function(e){
+          e.preventDefault();
+          r.value = Math.min(100, Math.max(0, Number(r.value) + Number(b.dataset.paso)));
+          ver();
+        });
+      });
+    });
+  }
+
+  /** El signo de pregunta de cada etiqueta abre y cierra su explicación. */
+  function cablearAyudas(raiz){
+    $$('[data-ayuda]', raiz).forEach(function(b){
+      if (b.dataset.listo) return;
+      b.dataset.listo = '1';
+      b.addEventListener('click', function(ev){
+        ev.preventDefault();
+        var caja = $('ay_' + b.dataset.ayuda);
+        if (caja) caja.className = caja.className.indexOf('oculto') >= 0 ? 'ayuda-caja' : 'ayuda-caja oculto';
+      });
+    });
   }
 
   /** Cosecha: lo que se cortó de forma lineal, la nota de envío y los equipos. */
@@ -4763,20 +4994,23 @@ function campoCaptura(id, paqInicial, planElegido){
 
     if (form === 'COBERTURA') {
       var ctrl = val('hCtrl');
-      if (ctrl === '') return msg('Escriba el porcentaje de control.', 'err');
+      if (ctrl === '') return msg('Corra la barra del porcentaje de control.', 'err');
       if (isNaN(Number(ctrl)) || Number(ctrl) < 0 || Number(ctrl) > 100) return msg('El control va de 0 a 100 %.', 'err');
       var cob = String(Math.round((100 - Number(ctrl.replace(',', '.'))) * 100) / 100);
       var esp = $$('.esp', $('cHoja')).map(function(d){
-        function marcado(c){ var b = d.querySelector('.' + c + '.on'); return b ? b.dataset.val : ''; }
-        return { especie: marcado('eEsp') || d.querySelector('.eNom').value.trim(),
-                 pct: d.querySelector('.ePct').value.trim(),
-                 tipo: marcado('eTipo'), habito: marcado('eHabito'), etapa: marcado('eEtapa') };
-      }).filter(function(x){ return x.especie && x.pct !== ''; });
+        var sel = d.querySelector('.eSel');
+        var op = sel.options[sel.selectedIndex] || {};
+        var marcado = d.querySelector('.eTipo.on');
+        return { especie: sel.value === '__otra' ? d.querySelector('.eNom').value.trim() : sel.value,
+                 pct: d.querySelector('.corredera-guarda').value.trim(),
+                 tipo: marcado ? marcado.dataset.val : '',
+                 habito: (op.dataset || {}).habito || '', etapa: '' };
+      }).filter(function(x){ return x.especie && x.pct !== '' && Number(x.pct) > 0; });
       var suma = esp.reduce(function(a, x){ return a + Number(x.pct); }, 0);
       if (Number(cob) > 0 && !esp.length &&
-          !confirm('No anotó ninguna especie. ¿Guardar solo la cobertura?')) return;
+          !confirm('No anotó ninguna maleza. ¿Guardar solo la cobertura?')) return;
       if (esp.length && Math.abs(suma - 100) > 2 &&
-          !confirm('Las especies suman ' + Math.round(suma) + ' % y deberían sumar 100 %. ¿Guardar así?')) return;
+          !confirm('Las malezas suman ' + Math.round(suma) + ' % y deberían sumar 100 %. ¿Guardar así?')) return;
       items.push(Object.assign({ uuid: uuid(), tipo: 'COBERTURA', control: ctrl.replace(',', '.'), especies: esp }, base));
       capturado = true;
 
@@ -4854,15 +5088,15 @@ function vistaEmpresa(){
       '<p class="guia">' + h(r.alcance) + '. Es un resumen de qué ensayos hay, de quién son y dónde están. ' +
       'El detalle de cada uno lo lleva su departamento.</p>' +
 
-      '<section class="seccion"><h2>Dónde están</h2>' +
-        '<div class="mapa-caja"><div class="mapa" id="eMapaDiv"><div class="cargando">Cargando el mapa…</div></div></div>' +
-        '<div class="leyenda" id="eLey"></div></section>' +
-
       '<section class="seccion"><h2>Por departamento</h2><div class="cifrones">' +
         r.porDepartamento.map(function(d){
           return '<div class="cifron" style="border-left:4px solid ' + h(d.color) + '"><b>' + d.ensayos + '</b>' +
             '<span>' + h(d.nombre) + '</span></div>';
         }).join('') + '</div></section>' +
+
+      '<section class="seccion"><h2>Dónde están</h2>' +
+        '<div class="mapa-caja"><div class="mapa" id="eMapaDiv"><div class="cargando">Cargando el mapa…</div></div></div>' +
+        '<div class="leyenda" id="eLey"></div></section>' +
 
       ((x.proximas || []).length ? '<section class="seccion"><h2>Próximos muestreos y cosechas</h2>' +
         '<p class="guia">Por si alguien quiere ir a verlos.</p>' +

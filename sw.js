@@ -17,10 +17,16 @@
  *      iguales), con un tope para no llenar el teléfono.
  *
  * Al publicar una versión nueva, suba el número de VERSION. Con eso se
- * borra lo guardado de la versión anterior.
+ * borra lo guardado de la versión anterior y, además, el teléfono se da
+ * cuenta de que este archivo cambió: ahí es cuando la pantalla saca el
+ * botón «Actualizar».
+ *
+ * Este trabajador NO se adelanta a entrar. Se queda esperando hasta que
+ * la persona toca «Actualizar», porque entrar solo a media captura en el
+ * campo es peor que esperar.
  * =================================================================== */
 
-var VERSION = 'ensayos-v1';
+var VERSION = 'ensayos-v6';
 var CACHE_APP    = VERSION + '-app';     // la pantalla y sus archivos
 var CACHE_MAPA   = VERSION + '-mapa';    // Leaflet
 var CACHE_IMAGEN = VERSION + '-imagen';  // las imágenes de satélite
@@ -46,7 +52,10 @@ self.addEventListener('install', function (ev) {
       return Promise.all(BASICOS.map(function (u) {
         return c.add(new Request(u, { cache: 'reload' })).catch(function () {});
       }));
-    }).then(function () { return self.skipWaiting(); })
+    })
+    // Sin skipWaiting: si ya había una versión corriendo, esta se queda
+    // esperando y la pantalla ofrece el botón «Actualizar». La primera
+    // vez que se instala no hay a quién esperar y entra sola.
   );
 });
 
