@@ -475,6 +475,9 @@
   .asis-fuera p{margin:6px 0 0;font-size:13px;color:var(--texto);line-height:1.5}
   .asis-fuera p.ojo{color:var(--acento);background:var(--ambar);border-radius:6px;padding:8px 10px;margin-top:8px}
   .asis-resp.ia{background:var(--azul-tenue);color:var(--ink);font-weight:400;line-height:1.55}
+  .asis-permiso{margin-top:12px;border:1px solid var(--acento);border-radius:10px;padding:12px 14px;background:#fff}
+  .asis-permiso pre.contexto{max-height:230px;overflow:auto;background:var(--papel);border:1px solid var(--linea);
+    border-radius:8px;padding:10px 12px;font:12px/1.5 var(--mono);white-space:pre-wrap;margin:8px 0}
 
   /* ============================ ACCESO ============================ */
   .acceso{flex:1;overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:24px 18px}
@@ -536,6 +539,8 @@
   .listo{background:var(--verde-tenue);border:1px solid #BEDFA4;border-radius:10px;padding:14px 16px;
     color:var(--texto);font-size:14px;line-height:1.5}
   .listo b{color:var(--verde)}
+  .listo.aviso{background:var(--ambar);border-color:#E8D9A8}
+  .listo.aviso b{color:var(--acento)}
 
   /* Pasos numerados (cómo instalar en el teléfono, por ejemplo). */
   ol.pasos{margin:10px 0 14px;padding-left:22px}
@@ -544,6 +549,18 @@
 
   /* Lo que se observa al final: malezas, plagas, cómo estaba el lote. */
   .cierre{margin-top:10px;padding-top:4px;border-top:1px dashed var(--linea)}
+  .depende{border-left:3px solid var(--verde-tenue);padding-left:10px;margin-top:4px}
+  /* Qué muestra se está llenando: grande, porque se trabaja de pie. */
+  .muestras{display:flex;gap:8px;margin:10px 0 2px}
+  .muestras .m{flex:1;flex-direction:column;align-items:center;gap:2px;display:flex;padding:11px 8px;
+    background:var(--papel);border:1px solid var(--linea);color:var(--tenue);border-radius:10px}
+  .muestras .m b{font-size:15px;color:var(--ink)}
+  .muestras .m span{font-size:11px;font-weight:600}
+  .muestras .m.hecha{background:var(--verde-tenue);border-color:#BEDFA4}
+  .muestras .m.hecha b,.muestras .m.hecha span{color:var(--verde)}
+  .muestras .m.on{background:var(--verde);border-color:var(--verde)}
+  .muestras .m.on b,.muestras .m.on span{color:#fff}
+  .opcion.grande{font-size:17px;padding:14px 18px;min-width:96px}
   .opcion em{display:block;font-style:normal;font-size:11px;color:var(--tenue);margin-top:2px;line-height:1.25}
   .opcion.on em{color:rgba(255,255,255,.85)}
 
@@ -584,15 +601,37 @@
   .herr button{width:46px;height:46px;border-radius:23px;background:#fff;color:var(--ink);border:1px solid var(--linea);
     padding:0;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.22)}
   .herr button svg{width:22px;height:22px}
+  /* Un ícono dentro de un botón de texto acompaña, no manda. */
+  button svg{width:18px;height:18px;vertical-align:-3px;margin-right:6px}
+  button.icono svg,.herr button svg,.lat-item svg,.tarjeta i svg,.act i svg,
+  .campo .vistas button svg,#asisBtn svg,.cifron i svg{margin-right:0;vertical-align:baseline}
   .herr button.on{background:var(--verde);color:#fff;border-color:var(--verde)}
   .medida{position:absolute;left:12px;right:70px;top:12px;z-index:800;background:#fff;border-radius:10px;padding:9px 12px;
     box-shadow:0 2px 10px rgba(0,0,0,.2);font-size:13px}
   .medida b{font:700 17px var(--mono);color:var(--ink)}
   .medida .bt{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
   .medida .bt button{padding:5px 10px;font-size:12px}
-  .estado-red{font-size:11px;font-weight:700;border-radius:12px;padding:3px 9px;white-space:nowrap;background:var(--verde-tenue);color:var(--verde)}
-  .estado-red.pend{background:var(--ambar);color:var(--acento)}
-  .estado-red.sin{background:var(--rojo-tenue);color:var(--error)}
+  /* Medir surco por surco: la lista de lo ya medido va a la vista. */
+  /* Al medir surcos el panel se va abajo: arriba es donde se ve el lote. */
+  .medida.surcos{top:auto;bottom:12px;left:12px;right:12px;max-height:40%;overflow-y:auto}
+  .medida.surcos .cab b{font-size:15px}
+  .medida.surcos b.grande{font:700 22px var(--mono);display:block;margin:4px 0}
+  .medida.surcos .lista{display:flex;flex-direction:column;gap:3px;margin:8px 0;font-size:12.5px}
+  .medida.surcos .lista span{display:flex;align-items:center;gap:6px}
+  .medida.surcos .lista .tot{border-top:1px solid var(--linea);padding-top:5px;margin-top:3px;color:var(--verde)}
+  .medida.surcos .lista .x{background:none;border:0;color:var(--tenue);padding:0 4px;font-size:15px;line-height:1}
+  .medida.surcos .lista .x:hover{color:var(--error);background:none}
+  .medida.surcos .bt{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .medida.surcos .bt button{padding:11px 8px;font-size:13px}
+  /* Semáforo de conexión: verde en línea, naranja esperando, rojo sin señal. */
+  .estado-red{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+    border-radius:12px;padding:4px 10px;white-space:nowrap;background:var(--verde-tenue);color:var(--verde)}
+  .estado-red i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:0 0 auto}
+  .estado-red.verde{background:var(--verde-tenue);color:var(--ok)}
+  .estado-red.naranja{background:var(--naranja-tenue);color:var(--naranja)}
+  .estado-red.naranja i{animation:late 1.2s ease-in-out infinite}
+  .estado-red.rojo{background:var(--rojo-tenue);color:var(--error)}
+  @keyframes late{0%,100%{opacity:1}50%{opacity:.25}}
   .filas{padding:8px}
   .fila-p{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid var(--linea);border-radius:6px;
     padding:12px;margin-bottom:6px;color:var(--ink);text-align:left;font-weight:400}
@@ -895,14 +934,23 @@ var Red = {
   },
   /** El navegador puede decir que hay red y aun así no alcanzar el servidor. */
   enLinea: function(){ return navigator.onLine !== false && Red.hay; },
+  /**
+   * Un semáforo, que se entiende sin leer: verde en línea, naranja
+   * cuando hay datos esperando señal, rojo sin conexión.
+   */
   pintar: function(){
     $$('.estado-red').forEach(function(el){
       var n = (typeof Cola !== 'undefined') ? Cola.todos().length : 0;
+      var enviando = (typeof Cola !== 'undefined' && Cola.enviando);
       var sin = !Red.enLinea();
-      el.className = 'estado-red' + (n ? ' pend' : '') + (sin ? ' sin' : '');
-      el.textContent = (typeof Cola !== 'undefined' && Cola.enviando) ? 'Enviando…'
-        : n ? n + ' sin enviar'
-        : sin ? 'Sin señal' : 'Al día';
+      var color = sin ? 'rojo' : (n || enviando) ? 'naranja' : 'verde';
+      var texto = sin ? 'Sin conexión' : enviando ? 'Enviando…' : n ? n + ' por enviar' : 'En línea';
+      el.className = 'estado-red ' + color;
+      el.innerHTML = '<i></i>' + h(texto);
+      el.title = sin
+        ? 'Sin conexión. Puede consultar lo guardado y capturar; todo se manda al volver la señal.'
+        : n ? n + ' dato(s) esperando subir al servidor.'
+            : 'Conectado con el servidor.';
     });
   },
   sincronizar: function(){
@@ -912,10 +960,23 @@ var Red = {
     l.forEach(function(f){ try { f(); } catch (e) {} });
   },
   /** La pantalla actual pide que la refresquen cuando vuelva la señal. */
-  cuandoVuelva: function(fn){ if (Red.alVolver.indexOf(fn) < 0) Red.alVolver.push(fn); }
+  cuandoVuelva: function(fn){ if (Red.alVolver.indexOf(fn) < 0) Red.alVolver.push(fn); },
+  /** Al cambiar de pantalla, lo que la anterior pidió ya no vale. */
+  olvidarPendientes: function(){ Red.alVolver = []; }
 };
 window.addEventListener('online', function(){ Red.marcar(true); });
 window.addEventListener('offline', function(){ Red.marcar(false); });
+
+/**
+ * ¿Ese pedazo de pantalla sigue puesto? Una respuesta del servidor puede
+ * llegar cuando la persona ya se fue a otro lado; repintar ahí deja la
+ * pantalla a medias y revienta al buscar las casillas («Cannot set
+ * properties of null»). Esto lo corta antes.
+ */
+function sigueEnPantalla(el){
+  return !!(el && el.ownerDocument && el.ownerDocument.body &&
+            el.ownerDocument.body.contains(el));
+}
 
 /** Franja para avisar que lo que se ve es una copia guardada. */
 function franjaCopia(datos){
@@ -1069,6 +1130,11 @@ function abrirAsistente(textoInicial){
     SUGERENCIAS_ASIS = (r.sugerencias && r.sugerencias.length) ? r.sugerencias : SUGERENCIAS_ASIS;
     $('asR').innerHTML =
       (r.respuesta ? '<div class="asis-resp">' + h(r.respuesta) + '</div>' : '') +
+      (r.tabla ? '<div class="tabla-env"><table class="tabla"><tr>' +
+        r.tabla.encabezados.map(function(x){ return '<th>' + h(x) + '</th>'; }).join('') + '</tr>' +
+        r.tabla.filas.map(function(f){
+          return '<tr>' + f.map(function(c){ return '<td>' + h(c) + '</td>'; }).join('') + '</tr>';
+        }).join('') + '</table></div>' : '') +
       ((r.fichas || []).length ? r.fichas.map(function(f){
         return '<div class="asis-f"' + (f.idEnsayo ? ' data-as-ensayo="' + h(f.idEnsayo) + '"' : '') + '>' +
           '<span class="et">' + h(f.tipo) + '</span>' +
@@ -1096,14 +1162,17 @@ function abrirAsistente(textoInicial){
   function ofrecerIA(pregunta){
     if (!pregunta) { $('asIA').innerHTML = ''; return; }
     $('asIA').innerHTML =
-      '<div class="asis-fuera"><b>¿Es una duda general de agronomía?</b>' +
-      '<p>El buscador de arriba solo sabe de este módulo. Una pregunta general ' +
-      '(«¿cómo actúa la ametrina?», «¿qué es un diseño de bloques?») se le puede hacer a ' +
-      '<b>Gemini</b>, de Google.</p>' +
-      '<p class="ojo">Si lo hace, <b>la pregunta sale del ingenio</b> y en el plan gratuito Google ' +
-      'puede usarla para entrenar. Gemini no tiene acceso a sus ensayos: solo lee lo que usted ' +
-      'escriba, así que no ponga datos del ingenio en la pregunta.</p>' +
-      '<div class="acciones"><button class="sec chico" id="asIAIr">Preguntarle a Gemini</button></div>' +
+      '<div class="asis-fuera"><b>¿Quiere pedir apoyo afuera?</b>' +
+      '<p>Si lo de arriba no le resolvió, se le puede preguntar a <b>Gemini</b>, de Google. ' +
+      'Hay dos formas, y la diferencia importa:</p>' +
+      '<div class="acciones" style="flex-wrap:wrap">' +
+        '<button class="sec chico" id="asIAIr">Solo la pregunta</button>' +
+        (ENSAYO_ABIERTO || puede('ver')
+          ? '<button class="sec chico" id="asIADatos">Con mis datos (pide permiso)</button>' : '') +
+      '</div>' +
+      '<p class="ojo"><b>Solo la pregunta:</b> sale lo que usted escriba y nada más. Sirve para ' +
+      'dudas generales de agronomía. En el plan gratuito Google puede usar esas preguntas para ' +
+      'entrenar.</p>' +
       '<div id="asIAR"></div></div>';
     $('asIAIr').onclick = function(){
       var b = this; b.disabled = true;
@@ -1118,8 +1187,41 @@ function abrirAsistente(textoInicial){
         $('asIAR').innerHTML = '<p class="guia">' + h(e.message) + '</p>';
       });
     };
+    if ($('asIADatos')) $('asIADatos').onclick = function(){
+      var b = this; b.disabled = true;
+      $('asIAR').innerHTML = '<div class="cargando">Preparando lo que se mandaría…</div>';
+      api('vistaPreviaIA', ENSAYO_ABIERTO || '').then(function(v){
+        b.disabled = false;
+        // Primero se le enseña, completo, lo que saldría. Después decide.
+        $('asIAR').innerHTML =
+          '<div class="asis-permiso"><b>Esto es lo que se mandaría a Google</b>' +
+          '<p class="guia">' + h(v.aviso) + '</p>' +
+          '<pre class="contexto">' + h(v.contexto) + '</pre>' +
+          '<label class="casilla"><input type="checkbox" id="asOk"> Autorizo compartir estos datos ' +
+          'y entiendo que salen del ingenio.</label>' +
+          '<div class="acciones"><button class="sec chico" id="asEnviar" disabled>Enviar y preguntar</button></div>' +
+          '<div id="asIAR2"></div></div>';
+        $('asOk').onchange = function(){ $('asEnviar').disabled = !this.checked; };
+        $('asEnviar').onclick = function(){
+          var e2 = this; e2.disabled = true;
+          $('asIAR2').innerHTML = '<div class="cargando">Preguntando con los datos…</div>';
+          api('preguntarIADatos', pregunta, ENSAYO_ABIERTO || '', true).then(function(x){
+            $('asIAR2').innerHTML = '<div class="asis-resp ia">' + h(x.respuesta).replace(/\n/g, '<br>') +
+              '</div><p class="guia">Respondió ' + h(x.modelo) + ' con el resumen que usted autorizó. ' +
+              'Queda anotado en la bitácora del ensayo.</p>';
+          }).catch(function(err){
+            e2.disabled = false;
+            $('asIAR2').innerHTML = '<p class="guia">' + h(err.message) + '</p>';
+          });
+        };
+      }).catch(function(e){
+        b.disabled = false;
+        $('asIAR').innerHTML = '<p class="guia">' + h(e.message) + '</p>';
+      });
+    };
   }
 }
+var ENSAYO_ABIERTO = '';
 var SUGERENCIAS_ASIS = ['¿Cuántos ensayos activos tengo?', '¿Qué mide la biometría?', '¿Dónde agrego usuarios?'];
 
 /**
@@ -1242,13 +1344,15 @@ var IC = {
  * Cada entrada es una función que vuelve a dibujar esa pantalla.
  */
 var PILA = [];
-function ir(fn){ PILA.push(fn); fn(); }
-function reemplazar(fn){ PILA.pop(); PILA.push(fn); fn(); }
+// Al cambiar de pantalla, lo que la anterior dejó pedido ya no vale.
+function ir(fn){ Red.olvidarPendientes(); PILA.push(fn); fn(); }
+function reemplazar(fn){ Red.olvidarPendientes(); PILA.pop(); PILA.push(fn); fn(); }
 function atras(){
+  Red.olvidarPendientes();
   if (PILA.length > 1) { PILA.pop(); PILA[PILA.length - 1](); }
   else inicioSegunRol();
 }
-function irInicio(){ PILA = []; inicioSegunRol(); }
+function irInicio(){ Red.olvidarPendientes(); PILA = []; inicioSegunRol(); }
 
 /**
  * Dibuja el armazón: barra superior (logo, regreso, título, usuario) y
@@ -1257,7 +1361,10 @@ function irInicio(){ PILA = []; inicioSegunRol(); }
 var LIMPIEZA = [];
 /** Lo que una pantalla deja encendido (GPS, mapas) se apaga al salir de ella. */
 function alSalir(fn){ LIMPIEZA.push(fn); }
-function limpiarPantalla(){ var l = LIMPIEZA; LIMPIEZA = []; l.forEach(function(f){ try { f(); } catch (e) {} }); }
+function limpiarPantalla(){
+  var l = LIMPIEZA; LIMPIEZA = [];
+  l.forEach(function(f){ try { f(); } catch (e) {} });
+}
 
 function armazon(titulo, subtitulo, opciones){
   opciones = opciones || {};
@@ -1719,9 +1826,13 @@ function vistaInicio(){
   if (copia) pintar(copia.datos);
   apiVista('inicio').then(pintar)
     .catch(function(e){ if (!copia) cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; fallo(e); });
-  Red.cuandoVuelva(function(){ apiVista('inicio').then(pintar).catch(function(){}); });
+  Red.cuandoVuelva(function(){
+    if (!sigueEnPantalla(cuerpo)) return;
+    apiVista('inicio').then(pintar).catch(function(){});
+  });
 
   function pintar(r){
+    if (!sigueEnPantalla(cuerpo)) return;   // ya se fue a otra pantalla
     var cfg = r.config, avisos = [];
     if (r._deCopia) avisos.push('<b>Sin señal.</b> Esto es lo que se guardó ' + h(haceCuanto(r._deCopia)) +
       '. Puede consultar; lo que cambie se manda cuando vuelva la señal.');
@@ -1752,6 +1863,15 @@ function vistaInicio(){
         '</div>' +
       '</section>' +
       avisos.map(function(a){ return '<div class="aviso-barra">' + a + '</div>'; }).join('') +
+      // Primero el estado general del ingenio, que es lo que cualquiera
+      // quiere ver al entrar; después ya lo que le toca a cada quien.
+      (puede('empresa')
+        ? '<section class="seccion"><div class="tarjetas">' +
+            tarjeta('tablero', IC.tablero, 'Ensayos Ingenio Madre Tierra',
+              'el estado general: cuántos hay, de qué departamento, dónde están y qué viene',
+              { color: 'verde', ancha: true }) +
+          '</div></section>'
+        : '') +
       '<section class="seccion"><h2>Departamentos</h2>' +
         '<p class="guia">Adentro de cada departamento está todo lo suyo: sus ensayos, la carga de parcelas, ' +
         'los muestreos, la cosecha, los costos y su agenda.</p>' +
@@ -1764,13 +1884,6 @@ function vistaInicio(){
             (x.vencidas ? '<em>' + x.vencidas + ' vencidas</em>' : '') + '</button>';
         }).join('') + '</div>' : '<p class="vacio">Su usuario no tiene departamentos asignados.</p>') +
       '</section>' +
-      (puede('empresa')
-        ? '<section class="seccion"><div class="tarjetas">' +
-            tarjeta('tablero', IC.tablero, 'Ensayos Ingenio Madre Tierra',
-              'el tablero general: mapa, traslapes, lo que viene y lo que falta',
-              { color: 'verde', ancha: true, badge: t.vencidas ? t.vencidas + ' vencidas' : '' }) +
-          '</div></section>'
-        : '') +
       '<section class="seccion"><h2>Ensayos · ' + (r.ensayos || []).length + '</h2>' +
         '<div class="filtros"><input id="iTexto" placeholder="Buscar por nombre, finca, lote o estado" value="' + h(F.texto) + '">' +
         '<select id="iDepto">' + opciones(r.departamentos.map(function(d){ return { v: d.id, t: d.nombre }; }), F.depto, 'Todos los departamentos') + '</select>' +
@@ -1838,9 +1951,13 @@ function vistaDepartamento(id){
   if (copia) pintarDepto(copia.datos);
   apiVista('departamento', id).then(pintarDepto)
     .catch(function(e){ if (!copia) cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; fallo(e); });
-  Red.cuandoVuelva(function(){ apiVista('departamento', id).then(pintarDepto).catch(function(){}); });
+  Red.cuandoVuelva(function(){
+    if (!sigueEnPantalla(cuerpo)) return;
+    apiVista('departamento', id).then(pintarDepto).catch(function(){});
+  });
 
   function pintarDepto(r){
+    if (!sigueEnPantalla(cuerpo)) return;   // ya se fue a otra pantalla
     var d = r.departamento, x = r.resumen;
     var f = FILTRO_DEP[id] = FILTRO_DEP[id] || { texto: '', estado: 'ACTIVOS', zona: '' };
     armazon(d.nombre, 'Departamento');
@@ -2399,7 +2516,10 @@ function vistaEnsayo(id, pestana, archivoParcelas){
    * vez y el servidor se consulta por detrás.
    */
   function dibujar(r, luego){
+    if (!sigueEnPantalla(cuerpo)) return;   // ya se fue a otra pantalla
     F = r;
+    ENSAYO_ABIERTO = id;                    // para que el asistente sepa de cuál se habla
+    alSalir(function(){ ENSAYO_ABIERTO = ''; });
     armazon(r.ensayo.nombre, r.ensayo.deptoNombre + ' · ' + r.ensayo.id);
     cuerpo = $('cuerpo');
     cuerpo.innerHTML = franjaCopia(r) +
@@ -2419,7 +2539,10 @@ function vistaEnsayo(id, pestana, archivoParcelas){
   function cargar(luego){
     var copia = Vistas.copia('ensayo', id);
     if (copia && !F) dibujar(copia.datos);
-    Red.cuandoVuelva(function(){ apiVista('ensayo', id).then(function(r){ dibujar(r); }).catch(function(){}); });
+    Red.cuandoVuelva(function(){
+      if (!sigueEnPantalla(cuerpo)) return;
+      apiVista('ensayo', id).then(function(r){ dibujar(r); }).catch(function(){});
+    });
     return apiVista('ensayo', id).then(function(r){ dibujar(r, luego); })
       .catch(function(e){
         if (copia) { msg('Sin señal: viendo lo guardado. Lo que cambie se manda cuando vuelva.', 'info'); return; }
@@ -2601,15 +2724,7 @@ function vistaEnsayo(id, pestana, archivoParcelas){
       // archivo: eso hacía pensar que faltaba información. Se dice que ya
       // están y queda un botón por si hay que volver a subirlos.
       (puede('editar') ? '<section class="seccion"><h2>Polígonos de las parcelas</h2>' +
-        (p.conGeometria >= p.n && p.n
-          ? '<div class="listo"><b>Las ' + p.n + ' parcelas ya tienen su polígono.</b>' +
-            (p.areaHa ? ' Suman ' + numero(p.areaHa, 2) + ' ha, calculadas de los polígonos.' : '') +
-            '<div class="acciones" style="margin-top:10px">' +
-            '<button class="sec chico" id="gOtra">Volver a subir el archivo</button></div></div>'
-          : '<p class="guia">' +
-            (p.conGeometria ? 'Faltan ' + (p.n - p.conGeometria) + ' parcelas por polígono. ' : '') +
-            'Suba el shapefile (.zip con .shp, .dbf y .prj), GeoJSON o KML. Cada polígono se enlaza con su ' +
-            'parcela por tratamiento y repetición; el área sale del polígono.</p>') +
+        estadoPoligonos(p, F.archivos) +
         '<div id="gSubir"' + (p.conGeometria >= p.n && p.n ? ' class="oculto"' : '') + '>' +
         zonaArchivo('gArch', 'Suelte aquí el shapefile de parcelas (.zip), el GeoJSON o el KML', '.zip,.geojson,.json,.kml,.kmz') +
         '<div class="fila">' +
@@ -2724,8 +2839,19 @@ function vistaEnsayo(id, pestana, archivoParcelas){
         }).join('') + '</table></div>' : '<p class="vacio">Sin tareas.</p>') + '</section>';
 
     al('[data-quitar-plan]', 'click', function(b){
+      if (b.disabled) return;
       if (!confirm('¿Quitar esta actividad del plan? Sus tareas pendientes se cancelan; los datos ya capturados se conservan.')) return;
-      api('quitarActividad', id, b.dataset.quitarPlan).then(function(r){ msg(r.mensaje, 'ok'); cargar(); }).catch(fallo);
+      // Se bloquea el botón: dos toques seguidos daban «esa actividad ya no
+      // está en el plan» y el renglón se quedaba ahí, como si no se hubiera
+      // quitado nada.
+      b.disabled = true;
+      api('quitarActividad', id, b.dataset.quitarPlan)
+        .then(function(r){ msg(r.mensaje, 'ok'); cargar(); })
+        .catch(function(e){
+          // Si ya no estaba, no es un error: la pantalla venía atrasada.
+          if (/ya no está en el plan/i.test(e.message)) { cargar(); return; }
+          b.disabled = false; fallo(e);
+        });
     }, c);
     al('[data-hecha]', 'click', function(b){
       b.disabled = true;
@@ -3209,6 +3335,42 @@ function tablaAnalisis(a){
 }
 
 /**
+ * Qué decir sobre los polígonos. Son tres situaciones distintas y antes
+ * se veían iguales, así que uno no sabía si faltaba subir algo o si solo
+ * estaba cargando:
+ *   · ya están todos        → se dice y no se vuelve a pedir el archivo;
+ *   · hay archivo subido pero las parcelas no quedaron enlazadas → se
+ *     dice cuál es el archivo, porque el problema es el enlace, no que
+ *     falte subirlo;
+ *   · no hay nada           → ahí sí se pide.
+ */
+function estadoPoligonos(p, archivos){
+  if (p.conGeometria >= p.n && p.n) {
+    return '<div class="listo"><b>Las ' + p.n + ' parcelas ya tienen su polígono.</b>' +
+      (p.areaHa ? ' Suman ' + numero(p.areaHa, 2) + ' ha, calculadas de los polígonos.' : '') +
+      '<div class="acciones" style="margin-top:10px">' +
+      '<button class="sec chico" id="gOtra">Volver a subir el archivo</button></div></div>';
+  }
+  var subidos = (archivos || []).filter(function(a){
+    return ['SHP_PARCELAS', 'PUNTOS_MUESTREO'].indexOf(String(a.tipo).toUpperCase()) >= 0;
+  });
+  if (subidos.length) {
+    var u = subidos[subidos.length - 1];
+    return '<div class="listo aviso"><b>Ya hay un archivo subido:</b> ' + h(u.titulo || u.nombre) +
+      (u.fecha ? ' (' + h(u.fecha) + ')' : '') + '.<br>' +
+      'Pero las parcelas todavía no quedaron enlazadas' +
+      (p.conGeometria ? ' (van ' + p.conGeometria + ' de ' + p.n + ')' : '') +
+      ': casi siempre es que los campos de tratamiento y repetición no coincidieron. ' +
+      'Vuelva a subirlo indicando bien esos dos campos.</div>';
+  }
+  return '<p class="guia">' +
+    (p.conGeometria ? 'Faltan ' + (p.n - p.conGeometria) + ' parcelas por polígono. ' : '') +
+    'Todavía no se ha subido ningún archivo. Suba el shapefile (.zip con .shp, .dbf y .prj), ' +
+    'GeoJSON o KML. Cada polígono se enlaza con su parcela por tratamiento y repetición; ' +
+    'el área sale del polígono.</p>';
+}
+
+/**
  * Lo que se revisa antes de creerle al análisis: si el ensayo estuvo
  * bien llevado (CV), si las varianzas son parecidas (Bartlett), si
  * faltan datos y si hay parcelas que se salen del patrón.
@@ -3289,17 +3451,10 @@ var Cola = {
       return 0;
     });
   },
-  /** Pastilla de estado en la barra: cuántos datos esperan señal. */
-  pintar: function(){
-    $$('.estado-red').forEach(function(el){
-      var n = Cola.todos().length;
-      el.className = 'estado-red' + (n ? ' pend' : '') + (navigator.onLine === false ? ' sin' : '');
-      el.textContent = Cola.enviando ? 'Enviando…' : n ? n + ' sin enviar' : (navigator.onLine === false ? 'Sin señal' : 'Al día');
-    });
-  }
+  /** El semáforo de la barra lo pinta Red, que es quien sabe si hay señal. */
+  pintar: function(){ Red.pintar(); }
 };
-window.addEventListener('online', function(){ Cola.pintar(); Cola.enviar(true); });
-window.addEventListener('offline', function(){ Cola.pintar(); });
+// Los avisos de red los maneja Red; aquí solo se aprovecha para enviar.
 setInterval(function(){ if (navigator.onLine !== false) Cola.enviar(true); }, 60000);
 
 /* ---------------------- paquetes por ensayo ---------------------- */
@@ -3517,6 +3672,7 @@ var MapaCampo = {
       }, caja);
     };
     M.medir = function(modo){
+      if (!modo) M.alPunto = null;
       M.midiendo = modo; M.puntos = [];
       if (M.trazo) { M.mapa.removeLayer(M.trazo); M.trazo = null; }
       M.marcas.forEach(function(m){ M.mapa.removeLayer(m); }); M.marcas = [];
@@ -3531,7 +3687,7 @@ var MapaCampo = {
       M.trazo = (M.midiendo === 'area' && M.puntos.length > 2)
         ? L.polygon(M.puntos, { color: '#E2A400', weight: 3, fillOpacity: .15, interactive: false }).addTo(M.mapa)
         : L.polyline(M.puntos, { color: '#E2A400', weight: 3, dashArray: '6 6', interactive: false }).addTo(M.mapa);
-      M.pintarMedida();
+      if (M.alPunto) M.alPunto(); else M.pintarMedida();
     };
     M.pintarMedida = function(){
       var d = 0;
@@ -3555,6 +3711,73 @@ var MapaCampo = {
         else if (q === 'limpiar') M.medir(M.midiendo);
         else { M.medir(null); $$('.herr [data-h]').forEach(function(x){ x.classList.remove('on'); }); }
       }, M.panel);
+    };
+
+    /**
+     * Medir los surcos cosechados, uno por uno. Se marcan los puntos de
+     * un surco, se confirma, y queda apuntado; después el siguiente. Al
+     * final devuelve la lista de longitudes.
+     *
+     * Se hace así porque en el campo los surcos no miden todos igual:
+     * pedir «largo del surco» una sola vez obliga a promediar a ojo.
+     */
+    M.medirSurcos = function(cuantos, alTerminar){
+      var surcos = [];
+      M.medir('distancia');
+      $$('.herr [data-h]').forEach(function(x){ x.classList.toggle('on', x.dataset.h === 'distancia'); });
+      pintar();
+
+      function largoActual(){
+        var d = 0;
+        for (var i = 1; i < M.puntos.length; i++) d += distanciaM(M.puntos[i - 1], M.puntos[i]);
+        return d;
+      }
+      function total(){ return surcos.reduce(function(a, b){ return a + b; }, 0); }
+
+      function pintar(){
+        var d = largoActual();
+        var n = surcos.length;
+        M.panel.className = 'medida surcos';
+        M.panel.innerHTML =
+          '<div class="cab"><b>Surco ' + (n + 1) + '</b>' +
+            (cuantos ? '<span class="tenue"> de ' + cuantos + '</span>' : '') + '</div>' +
+          (M.puntos.length < 2
+            ? '<p class="tenue">Toque el principio y el final del surco en el mapa. ' +
+              'Puede usar «+ punto GPS» caminando sobre el surco.</p>'
+            : '<b class="grande">' + formatoM(d) + '</b>') +
+          (n ? '<div class="lista">' + surcos.map(function(x, i){
+                 return '<span>Surco ' + (i + 1) + ': <b>' + x.toFixed(2) + ' m</b>' +
+                   '<button class="x" data-s="quitar:' + i + '" title="Quitar">×</button></span>';
+               }).join('') + '<span class="tot">Total: <b>' + total().toFixed(2) + ' m</b></span></div>' : '') +
+          '<div class="bt">' +
+            '<button class="sec" data-s="gps">+ punto GPS</button>' +
+            '<button class="sec" data-s="deshacer">Deshacer punto</button>' +
+            '<button data-s="confirmar"' + (M.puntos.length < 2 ? ' disabled' : '') + '>Confirmar surco</button>' +
+            '<button class="sec" data-s="listo">Listo (' + n + ')</button>' +
+          '</div>';
+        al('[data-s]', 'click', function(b){
+          var q = b.dataset.s;
+          if (q === 'gps') { if (M.ultima) { M.agregarPunto([M.ultima.lat, M.ultima.lon]); } else msg('Todavía no hay señal de GPS.', 'info'); pintar(); return; }
+          if (q === 'deshacer') { var p2 = M.puntos.slice(0, -1); M.medir('distancia'); p2.forEach(M.agregarPunto); pintar(); return; }
+          if (q.indexOf('quitar:') === 0) { surcos.splice(Number(q.split(':')[1]), 1); pintar(); return; }
+          if (q === 'confirmar') {
+            var d2 = largoActual();
+            if (d2 <= 0) return;
+            surcos.push(Math.round(d2 * 100) / 100);
+            M.medir('distancia');          // limpia para el siguiente surco
+            pintar();
+            msg('Surco ' + surcos.length + ': ' + d2.toFixed(2) + ' m. Mida el siguiente.', 'ok');
+            return;
+          }
+          if (q === 'listo') {
+            M.medir(null);
+            $$('.herr [data-h]').forEach(function(x){ x.classList.remove('on'); });
+            alTerminar(surcos);
+          }
+        }, M.panel);
+      }
+      // cada punto nuevo repinta el panel
+      M.alPunto = pintar;
     };
     return listo;
   }
@@ -3902,6 +4125,20 @@ function campoCaptura(id, paqInicial, planElegido){
     });
   }
   function quienCapturo(p){ return (S.paq.hechasPor || {})[clave(p.id)] || ''; }
+  /** Las submuestras que ya se tomaron hoy en esa parcela. */
+  function muestrasHechas(p){
+    var del = ((S.paq.muestrasHechas || {})[clave(p.id)] || []).slice();
+    // Lo que todavía está en la cola del teléfono también cuenta.
+    var hoy = fechaHoyISO();
+    Cola.todos().forEach(function(x){
+      if (x.idEnsayo === id && x.idParcela === p.id && x.actividad === (S.plan && S.plan.actividad) &&
+          x.tipo === 'MUESTRA' && String(x.fechaLocal || '').substring(0, 10) === hoy) {
+        var n = Number(x.muestra) || 1;
+        if (del.indexOf(n) < 0) del.push(n);
+      }
+    });
+    return del.sort(function(a, b){ return a - b; });
+  }
   function colorHecha(p){ return S.hechas[clave(p.id)] ? { fill: '#0D9440', opacidad: .78, borde: '#B6E59A', grosor: 3 } : null; }
   function refrescar(){
     var n = S.paq.parcelas.filter(function(p){ return S.hechas[clave(p.id)]; }).length, t = S.paq.parcelas.length;
@@ -3946,6 +4183,11 @@ function campoCaptura(id, paqInicial, planElegido){
     S.parcela = p;
     var form = S.plan.formulario || 'VARIABLES';
     var ya = S.hechas[clave(p.id)];
+    // Si ya se tomó la muestra 1, se abre directo en la que falta: así
+    // nadie vuelve a llenar la misma y pisa lo de antes.
+    var hechas = form === 'VARIABLES' ? muestrasHechas(p) : [];
+    var primera = 1;
+    for (var k = 1; k <= (S.plan.muestras || 1); k++) { if (hechas.indexOf(k) < 0) { primera = k; break; } }
     var cuerpoForm = form === 'COBERTURA' ? formCobertura() : form === 'COSECHA_CANA' ? formCosecha() : formVariables();
 
     $('cHoja').innerHTML = '<div class="agarre"></div><div class="cab"><div class="txt"><b>' + h(p.etiqueta || ('Parcela ' + p.num)) + '</b>' +
@@ -3956,10 +4198,16 @@ function campoCaptura(id, paqInicial, planElegido){
         'Si guarda otra vez se agrega otra medición.</div>' : '') +
       '<div class="tenue" style="font-size:13px;margin-top:8px">' + h(S.plan.actividad) +
         (S.plan.muestras > 1 ? ' · ' + S.plan.muestras + ' muestras por parcela' : '') + '</div>' +
-      (S.plan.muestras > 1 ? '<div class="pestanas chicas" id="hMuestras">' +
+      (S.plan.muestras > 1 ? '<div class="muestras" id="hMuestras">' +
         rango(S.plan.muestras).map(function(n){
-          return '<button class="' + (n === 1 ? 'on' : '') + '" data-muestra="' + n + '">Muestra ' + n + '</button>';
-        }).join('') + '</div>' : '') +
+          var ok = hechas.indexOf(n) >= 0;
+          return '<button class="m' + (n === primera ? ' on' : '') + (ok ? ' hecha' : '') +
+            '" data-muestra="' + n + '"><b>Muestra ' + n + '</b>' +
+            '<span>' + (ok ? 'ya tomada' : 'pendiente') + '</span></button>';
+        }).join('') + '</div>' +
+        (hechas.length && hechas.length < S.plan.muestras
+          ? '<div class="ya">Ya tomó la muestra ' + hechas.join(' y la ') + ' de esta parcela. ' +
+            'Está llenando la <b>muestra ' + primera + '</b>.</div>' : '') : '') +
       cuerpoForm +
       '<label>Foto (opcional)</label>' +
       '<div class="acciones" style="margin:0 0 4px"><label class="sec chico foto-btn">' + IC.camara +
@@ -3977,13 +4225,20 @@ function campoCaptura(id, paqInicial, planElegido){
     else cablearVariables();
     cablearFoto();
     Teclado.cablear($('cHoja'));
-    S.muestra = 1;
+    S.muestra = primera;
+    S.hechasDeEsta = hechas;
     if ($('hMuestras')) {
       al('[data-muestra]', 'click', function(b, ev){
         ev.preventDefault();
+        var n = Number(b.dataset.muestra);
+        if (hechas.indexOf(n) >= 0 &&
+            !confirm('La muestra ' + n + ' ya se tomó hoy en esta parcela. Si la llena otra vez se guarda ' +
+                     'una medición más, no reemplaza la anterior. ¿Continuar?')) return;
         if (!guardarMuestraEnMemoria()) return;
-        $$('[data-muestra]').forEach(function(x){ x.className = x === b ? 'on' : ''; });
-        S.muestra = Number(b.dataset.muestra);
+        $$('[data-muestra]').forEach(function(x){
+          x.className = 'm' + (x === b ? ' on' : '') + (hechas.indexOf(Number(x.dataset.muestra)) >= 0 ? ' hecha' : '');
+        });
+        S.muestra = n;
         ponerMuestraEnPantalla();
       }, $('hMuestras'));
     }
@@ -4039,21 +4294,28 @@ function campoCaptura(id, paqInicial, planElegido){
   }
 
   function campoVariable(v, i){
-    var etq = '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
-      (ayudaDe(v) ? '<p class="guia" style="margin:-2px 0 6px">' + h(ayudaDe(v)) + '</p>' : '');
     var id = 'v' + i;
+    // Una variable puede depender de otra: «¿Cuáles malezas?» solo tiene
+    // sentido si antes se dijo que sí hay. Nace escondida y aparece al
+    // marcar Sí, para no pedir en el campo algo que no aplica.
+    var dep = v.siEs ? ' data-depende="' + h(v.siEs) + '"' : '';
+    var abre = v.siEs ? '<div class="depende oculto" id="d' + id + '"' + dep + '>' : '';
+    var cierra = v.siEs ? '</div>' : '';
+    var etq = abre + '<label>' + h(v.nombre) + (v.unidad ? ' (' + h(v.unidad) + ')' : '') + '</label>' +
+      (ayudaDe(v) ? '<p class="guia" style="margin:-2px 0 6px">' + h(ayudaDe(v)) + '</p>' : '');
     if (v.tipo === 'lista') {
       return etq + '<div class="opciones">' + v.opciones.map(function(o){
         return '<button type="button" class="opcion una" data-campo="' + id + '" data-val="' + h(o) + '">' + h(o) + '</button>';
-      }).join('') + '</div>';
+      }).join('') + '</div>' + cierra;
     }
     if (v.tipo === 'si_no') {
       return etq + '<div class="opciones">' + ['Sí', 'No'].map(function(o){
-        return '<button type="button" class="opcion una" data-campo="' + id + '" data-val="' + h(o) + '">' + h(o) + '</button>';
-      }).join('') + '</div>';
+        return '<button type="button" class="opcion una grande" data-campo="' + id + '" data-val="' + h(o) + '" ' +
+          'data-nombre="' + h(v.nombre) + '">' + h(o) + '</button>';
+      }).join('') + '</div>' + cierra;
     }
     if (v.tipo === 'texto') {
-      return etq + '<input type="text" data-var="' + i + '" id="' + id + '" autocomplete="off">';
+      return etq + '<input type="text" data-var="' + i + '" id="' + id + '" autocomplete="off">' + cierra;
     }
     if (v.tipo === 'por_metro') {
       return etq + '<div class="fila" style="gap:8px">' +
@@ -4064,10 +4326,10 @@ function campoCaptura(id, paqInicial, planElegido){
           '<input type="text" inputmode="decimal" data-num="1" readonly min="0" ' +
           'id="' + id + 'L" value="' + h(v.largo || 10) + '"></div></div>' +
         '<div class="ya" id="' + id + 'R" style="background:var(--verde-tenue);color:var(--verde)">' +
-        'Se cuenta en ' + h(v.largo || 10) + ' metros lineales</div>';
+        'Se cuenta en ' + h(v.largo || 10) + ' metros lineales</div>' + cierra;
     }
     return etq + '<input class="grande" type="text" inputmode="decimal" data-num="1" readonly ' +
-      'data-var="' + i + '" id="' + id + '" autocomplete="off">';
+      'data-var="' + i + '" id="' + id + '" autocomplete="off">' + cierra;
   }
 
   function ayudaDe(v){
@@ -4130,6 +4392,7 @@ function campoCaptura(id, paqInicial, planElegido){
       var grupo = b.parentNode, ya = b.className.indexOf(' on') >= 0;
       $$('[data-campo="' + b.dataset.campo + '"]', grupo).forEach(function(o){ o.className = o.className.replace(' on', ''); });
       if (!ya) b.className += ' on';
+      aplicarDependencias();
     }, $('cHoja'));
     al('.rep', 'click', function(b, ev){
       if (b.tagName !== 'BUTTON') return;
@@ -4151,7 +4414,22 @@ function campoCaptura(id, paqInicial, planElegido){
       }
       $(id).oninput = calcular; $(id + 'L').oninput = calcular;
     });
+    aplicarDependencias();
     promedios();
+  }
+
+  /** Muestra u oculta lo que depende de un sí/no, según cómo quedó. */
+  function aplicarDependencias(){
+    $$('[data-depende]', $('cHoja')).forEach(function(caja){
+      var nombre = caja.dataset.depende;
+      var dueno = $('cHoja').querySelector('[data-nombre="' + nombre.replace(/"/g, '') + '"].on');
+      var si = dueno && dueno.dataset.val === 'Sí';
+      caja.className = 'depende' + (si ? '' : ' oculto');
+      if (!si) {
+        // Si se cambia a No, lo que se hubiera escrito no se guarda.
+        $$('input, textarea', caja).forEach(function(i){ i.value = ''; });
+      }
+    });
   }
 
   /**
@@ -4313,7 +4591,12 @@ function campoCaptura(id, paqInicial, planElegido){
       return '<label>' + etiqueta + '</label><input id="' + id + '"' + (l.length ? ' list="dl' + id + '"' : '') +
         ' autocomplete="off">' + (l.length ? '<datalist id="dl' + id + '">' + opciones(l) + '</datalist>' : '');
     }
-    return '<label>¿Cuántos surcos se cosecharon completos?</label>' +
+    return '<div class="acciones" style="margin:4px 0 10px">' +
+        '<button class="sec chico" id="hMedir">' + IC.regla + ' Medir los surcos en el mapa</button>' +
+      '</div>' +
+      '<p class="guia" style="margin:-4px 0 10px">Si los surcos no miden todos igual, mídalos en el mapa ' +
+      'uno por uno: el módulo los va sumando.</p>' +
+      '<label>¿Cuántos surcos se cosecharon completos?</label>' +
       '<input id="hSurcos" type="text" inputmode="numeric" data-num="entero" readonly min="0" ' +
         'class="grande" placeholder="surcos completos" autocomplete="off">' +
       '<label>¿Cuánto mide cada surco? (m)</label>' +
@@ -4355,6 +4638,37 @@ function campoCaptura(id, paqInicial, planElegido){
     }
     ['hSurcos', 'hLargoSurco', 'hUltimo'].forEach(function(id){ $(id).oninput = sumar; });
     $('hLargo').oninput = pintar;
+
+    // Medir en el mapa: se guarda lo escrito, se va al mapa, se miden los
+    // surcos uno por uno y al terminar se regresa con la suma puesta.
+    if ($('hMedir')) $('hMedir').onclick = function(){
+      if (!S.mapa) return msg('El mapa todavía no está listo.', 'info');
+      var p = S.parcela;
+      var cuantos = Number(val('hSurcos')) || 0;
+      S.midiendo = { idParcela: p.id, surcos: cuantos };
+      $('cHoja').className = 'hoja';                   // se esconde, no se cierra
+      $$('.campo .vistas button').forEach(function(x){
+        x.className = x.dataset.p === 'mapa' ? 'on' : '';
+      });
+      ['mapa', 'lista', 'info'].forEach(function(q){
+        $('cp' + q.charAt(0).toUpperCase() + q.slice(1)).className = 'panel' + (q === 'mapa' ? '' : ' oculto');
+      });
+      if (S.mapa.mapa) { S.mapa.mapa.invalidateSize(); S.mapa.irA(p); }
+      msg('Mida el primer surco: toque su principio y su final.', 'info');
+      S.mapa.medirSurcos(cuantos, function(surcos){
+        abrirHoja(p);                                   // vuelve la hoja de captura
+        if (!surcos.length) return;
+        var total = surcos.reduce(function(a, b){ return a + b; }, 0);
+        var completos = surcos.length > 1 ? surcos.length - 1 : surcos.length;
+        var prom = surcos.slice(0, completos).reduce(function(a, b){ return a + b; }, 0) / Math.max(1, completos);
+        if ($('hSurcos')) $('hSurcos').value = String(completos);
+        if ($('hLargoSurco')) $('hLargoSurco').value = prom.toFixed(2);
+        if ($('hUltimo')) $('hUltimo').value = surcos.length > 1 ? surcos[surcos.length - 1].toFixed(2) : '';
+        if ($('hLargo')) $('hLargo').value = total.toFixed(2);
+        if ($('hLargo') && $('hLargo').oninput) $('hLargo').oninput();
+        msg('Se midieron ' + surcos.length + ' surcos: ' + total.toFixed(2) + ' m en total.', 'ok');
+      });
+    };
     pintar();
   }
 
@@ -4482,8 +4796,11 @@ function campoCaptura(id, paqInicial, planElegido){
       var muestras = S.muestras || {};
       var conDatos = Object.keys(muestras).filter(function(k){ return Object.keys(muestras[k]).length; });
       if (!conDatos.length && !obs) return msg('Escriba al menos un dato.', 'err');
-      if (S.plan.muestras > 1 && conDatos.length < S.plan.muestras &&
-          !confirm('Solo llenó ' + conDatos.length + ' de ' + S.plan.muestras + ' muestras. ¿Guardar así?')) return;
+      // Si las otras muestras ya se tomaron antes, no hay nada que reclamar.
+      var yaTomadas = (S.hechasDeEsta || []).length;
+      if (S.plan.muestras > 1 && (conDatos.length + yaTomadas) < S.plan.muestras &&
+          !confirm('Va a guardar ' + conDatos.length + ' de ' + S.plan.muestras + ' muestras. ' +
+                   'Las que falten quedan pendientes y puede volver después. ¿Guardar así?')) return;
       conDatos.forEach(function(k){
         items.push(Object.assign({ uuid: uuid(), tipo: 'MUESTRA', muestra: Number(k), datos: muestras[k] }, base));
       });
@@ -4524,40 +4841,31 @@ function vistaEmpresa(){
   var filtro = { depto: '', zona: '', texto: '' };
   api('empresa').then(function(r){
     var x = r.resumen || {};
+    // Esto es un reporte para ver de un vistazo qué hay y dónde, no una
+    // lista de tareas: lo pendiente lo trabaja cada departamento en su
+    // propia pantalla.
     cuerpo.innerHTML =
       '<div class="cifrones">' +
         cifron(x.ensayos || 0, 'ensayos activos', IC.ensayo) +
-        cifron(numero(x.areaHa || 0, 2), 'hectáreas en parcelas', IC.hectarea) +
+        cifron(numero(x.areaHa || 0, 2), 'hectáreas con ensayos', IC.hectarea) +
         cifron(x.parcelas || 0, 'parcelas', IC.capa) +
         cifron(x.cosechaCerca || 0, 'cosechas en 30 días', IC.cosecha, x.cosechaCerca ? 'ambar' : '') +
-        cifron(x.atrasadas || 0, 'tareas vencidas', IC.reloj, x.atrasadas ? 'rojo' : '') +
-        cifron(r.traslapes.length, 'lotes con traslape', IC.pendiente, r.traslapes.length ? 'rojo' : '') +
       '</div>' +
-      '<p class="guia">' + h(r.alcance) + '. Aquí se ve quién trabaja en cada lote para no aplicar dos ensayos en el mismo ' +
-      'lugar. Solo se muestran los datos para coordinarse; los datos de cada ensayo los ve su departamento.</p>' +
+      '<p class="guia">' + h(r.alcance) + '. Es un resumen de qué ensayos hay, de quién son y dónde están. ' +
+      'El detalle de cada uno lo lleva su departamento.</p>' +
 
-      (x.porEstado && x.porEstado.length ? '<section class="seccion"><h2>En qué va cada ensayo</h2><div class="barras">' +
-        x.porEstado.map(function(e){
-          return '<div class="barra-est"><span class="nom">' + h(e.estado.replace(/_/g, ' ').toLowerCase()) + '</span>' +
-            '<span class="riel"><i style="width:' + Math.round(e.n / (x.ensayos || 1) * 100) + '%"></i></span>' +
-            '<span class="n">' + e.n + '</span></div>';
-        }).join('') + '</div></section>' : '') +
+      '<section class="seccion"><h2>Dónde están</h2>' +
+        '<div class="mapa-caja"><div class="mapa" id="eMapaDiv"><div class="cargando">Cargando el mapa…</div></div></div>' +
+        '<div class="leyenda" id="eLey"></div></section>' +
 
-      '<section class="seccion"><h2>Departamentos</h2><div class="cifrones">' +
+      '<section class="seccion"><h2>Por departamento</h2><div class="cifrones">' +
         r.porDepartamento.map(function(d){
           return '<div class="cifron" style="border-left:4px solid ' + h(d.color) + '"><b>' + d.ensayos + '</b>' +
             '<span>' + h(d.nombre) + '</span></div>';
         }).join('') + '</div></section>' +
 
-      ((x.pendientes || []).length ? '<section class="seccion"><h2>Ensayos con algo pendiente · ' + x.nPendientes + '</h2>' +
-        x.pendientes.map(function(p){
-          return '<button class="archivo clic" data-ens="' + h(p.id) + '" style="width:100%;text-align:left">' +
-            '<span class="tipo" style="background:var(--ambar);color:var(--acento)">falta</span>' +
-            '<span class="txt"><b>' + h(p.nombre) + '</b><span>' + h(p.deptoNombre) + ' · ' + h(p.falta) + '</span></span>' +
-            '<span class="flecha">›</span></button>';
-        }).join('') + '</section>' : '') +
-
-      ((x.proximas || []).length ? '<section class="seccion"><h2>Esta semana</h2>' +
+      ((x.proximas || []).length ? '<section class="seccion"><h2>Próximos muestreos y cosechas</h2>' +
+        '<p class="guia">Por si alguien quiere ir a verlos.</p>' +
         '<div class="tabla-env"><table class="tabla"><tr><th>Cuándo</th><th>Actividad</th></tr>' +
         x.proximas.map(function(t){
           return '<tr class="clic' + (t.dias <= 2 ? ' pronto' : '') + '" data-ens="' + h(t.id) + '">' +
@@ -4570,10 +4878,10 @@ function vistaEmpresa(){
           ' · zona ' + h(t.zona) + (t.desc ? ' · ' + h(t.desc) : '') + '<br>' + t.ensayos.map(function(e){
             return '«' + h(e.nombre) + '» de ' + h(e.deptoNombre) + ', aplicado ' + h(e.aplicacion || '—') + (e.responsable ? ' (' + h(e.responsable) + ')' : '');
           }).join('<br>') + '</div>';
-      }).join('') + '</section>' : '<div class="aviso-barra ok">Ningún lote tiene dos ensayos activos al mismo tiempo.</div>') +
-      '<section class="seccion"><h2>Mapa</h2><div class="acciones" style="margin:0 0 10px"><button class="sec" id="eMapa">Ver los lotes en el mapa</button></div>' +
-        '<div id="eMapaCaja"></div></section>' +
-      '<section class="seccion"><h2>Ensayos activos</h2><div class="filtros">' +
+      }).join('') + '</section>'
+        : '<div class="aviso-barra ok">Ningún lote tiene dos ensayos activos al mismo tiempo.</div>') +
+
+      '<section class="seccion"><h2>Todos los ensayos</h2><div class="filtros">' +
         '<input id="eTexto" placeholder="Buscar lote, finca o ensayo">' +
         '<select id="eDepto">' + opciones(r.porDepartamento.map(function(d){ return { v: d.id, t: d.nombre }; }), '', 'Todos los departamentos') + '</select>' +
         '<select id="eZona">' + opciones(r.porZona.map(function(z){ return { v: z.zona, t: 'Zona ' + z.zona + ' (' + z.ensayos + ')' }; }), '', 'Todas las zonas') + '</select>' +
@@ -4601,10 +4909,10 @@ function vistaEmpresa(){
     $('eDepto').onchange = function(){ filtro.depto = this.value; tabla(); };
     $('eZona').onchange = function(){ filtro.zona = this.value; tabla(); };
     tabla();
-    $('eMapa').onclick = function(){
-      this.disabled = true;
-      $('eMapaCaja').innerHTML = '<div class="mapa-caja"><div class="mapa" id="eMapaDiv"><div class="cargando">Cargando lotes…</div></div></div><div class="leyenda" id="eLey"></div>';
+    // El mapa se despliega de entrada: es lo primero que se quiere ver.
+    (function(){
       Promise.all([api('empresaMapa'), cargarLeaflet()]).then(function(x){
+        if (!sigueEnPantalla($('eMapaDiv'))) return;
         var fc = x[0], L = x[1];
         $('eMapaDiv').innerHTML = '';
         var mapa = L.map('eMapaDiv', { maxZoom: 20 });
@@ -4625,8 +4933,10 @@ function vistaEmpresa(){
         $('eLey').innerHTML = r.porDepartamento.map(function(d){ return '<span><i style="background:' + h(d.color) + '"></i>' + h(d.nombre) + '</span>'; }).join('') +
           '<span><i style="background:#C0392B"></i>más de un ensayo</span>' +
           (fc.sinGeometria ? '<span class="tenue">' + fc.sinGeometria + ' lotes sin polígono en la capa</span>' : '');
-      }).catch(function(e){ $('eMapaCaja').innerHTML = '<p class="vacio">' + h(e.message) + '</p>'; });
-    };
+      }).catch(function(e){
+        if ($('eMapaDiv')) $('eMapaDiv').innerHTML = '<div class="vacio">' + h(e.message) + '</div>';
+      });
+    })();
   }).catch(function(e){ cuerpo.innerHTML = '<div class="vacio">' + h(e.message) + '</div>'; });
 }
 
